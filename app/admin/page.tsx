@@ -3,14 +3,14 @@ import type { Route } from "next";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { StatusPill } from "@/components/status-pill";
-import { customerReviews, orders, products, profiles } from "@/lib/demo-data";
+import { customerReviews, orders, profiles } from "@/lib/demo-data";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import {
   getOrderTotal,
-  getPopularProducts,
   getRevenueSummary,
   processingStatuses
 } from "@/lib/admin-metrics";
+import { getCatalogData } from "@/lib/supabase-catalog";
 import { SlotCapacityManager } from "./slot-capacity-manager";
 import {
   Banknote,
@@ -23,11 +23,32 @@ import {
   TrendingUp
 } from "lucide-react";
 
-export default function AdminPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminPage() {
+  const { products } = await getCatalogData();
   const staff = profiles.filter((profile) => profile.role === "staff");
   const latestOrders = [...orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
   const latestReviews = [...customerReviews].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
-  const popularProducts = getPopularProducts(4);
+  const popularityRank = {
+    top_selling: 0,
+    popular: 1,
+    seasonal: 2,
+    standard: 3
+  } as const;
+  const popularProducts = [...products]
+    .sort((a, b) => {
+      const aRank = popularityRank[a.popularity ?? "standard"];
+      const bRank = popularityRank[b.popularity ?? "standard"];
+      return aRank - bRank || a.name.localeCompare(b.name);
+    })
+    .slice(0, 4)
+    .map((product) => ({
+      name: product.name,
+      price: product.price,
+      unit: product.unit,
+      popularityLabel: product.popularity ? product.popularity.replace("_", " ") : "standard"
+    }));
   const priceMovers = [...products].sort((a, b) => {
     const aMove = Math.abs(a.price - (a.previousWeekPrice ?? a.price));
     const bMove = Math.abs(b.price - (b.previousWeekPrice ?? b.price));

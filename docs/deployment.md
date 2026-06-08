@@ -17,7 +17,8 @@ npm run deploy:check
 
 1. Create a hosted Supabase project named `smart-delivery-pilot`.
 2. Copy the project URL and publishable or anon key.
-3. Apply the schema in `supabase/migrations/001_initial_schema.sql`.
+3. Apply the schema migrations in `supabase/migrations`.
+4. Run the seed file in `supabase/seed.sql` to load categories, products, delivery slots, service fee, and payment methods.
 
 Preferred CLI flow:
 
@@ -27,7 +28,19 @@ supabase link
 supabase db push
 ```
 
-If the Supabase CLI is not installed, open the Supabase SQL Editor and run the SQL from `supabase/migrations/001_initial_schema.sql`.
+Then open the Supabase SQL Editor and run `supabase/seed.sql`.
+
+If the Supabase CLI is not installed, open the Supabase SQL Editor and run the SQL from:
+
+1. `supabase/migrations/001_initial_schema.sql`
+2. `supabase/migrations/002_catalog_seed_keys.sql`
+3. `supabase/seed.sql`
+
+When the catalog changes later, regenerate the seed locally with:
+
+```bash
+npm run seed:supabase
+```
 
 ## 3. Netlify Setup
 
@@ -83,6 +96,7 @@ Confirm:
 
 - Product catalog loads.
 - Admin product table loads.
+- Supabase-seeded catalog appears on `/customer` and `/admin/products` when environment variables and seed data are present.
 - Staff table loads.
 - Customer cart works.
 - Auth page sees Supabase environment variables.
@@ -90,6 +104,7 @@ Confirm:
 
 ## Notes
 
-- Current UI still uses demo data for most screens.
-- Supabase schema is ready for real persistence, but route handlers must be connected to database queries before production operations.
+- Current UI still uses demo data for orders, staff operations, reviews, and order submission.
+- Supabase catalog reads are enabled for customer products, admin products, and admin product metrics with demo fallback.
+- Route handlers must be connected to database mutations before production ordering operations.
 - Trial product prices are temporary and should be replaced by admin-entered shop prices before launch.

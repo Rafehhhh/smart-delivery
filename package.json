@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "seed:supabase": "node tools/generate-supabase-seed.mjs",
     "deploy:check": "npm run test && npm run build"
   },
   "dependencies": {

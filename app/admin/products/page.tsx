@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { categories, localShops, products } from "@/lib/demo-data";
+import { localShops } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
+import { getCatalogData } from "@/lib/supabase-catalog";
 import { AdminHomeHeader } from "../admin-header";
 import { ArrowLeft, MapPin, PackageSearch, Phone, Store, TrendingDown, TrendingUp } from "lucide-react";
 
-export default function AdminProductsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminProductsPage() {
+  const { categories, products } = await getCatalogData();
   const categoryById = new Map(categories.map((category) => [category.id, category.name]));
   const sortedProducts = [...products].sort(
     (first, second) =>

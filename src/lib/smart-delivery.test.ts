@@ -10,6 +10,12 @@ import {
   remainingSlotCapacity
 } from "./calculations";
 import { products } from "./demo-data";
+import {
+  getCatalogData,
+  mapDeliverySlotRow,
+  mapProductRow,
+  mapServiceFeeRuleRow
+} from "./supabase-catalog";
 import type { DeliverySlot, OrderItem, ServiceFeeRule } from "./types";
 
 const items: OrderItem[] = [
@@ -140,6 +146,103 @@ describe("catalog import", () => {
 
   it("gives every catalog product a trial or verified estimate", () => {
     expect(products.every((product) => product.price > 0)).toBe(true);
+  });
+
+  it("keeps generated Supabase source keys unique", () => {
+    const sourceKeys = products.map((product) => product.id);
+    expect(new Set(sourceKeys).size).toBe(sourceKeys.length);
+  });
+});
+
+describe("supabase catalog mapping", () => {
+  it("maps product rows into the existing app product shape", () => {
+    const categoryMap = new Map([["uuid-cat", "cat-vegetables"]]);
+
+    expect(
+      mapProductRow(
+        {
+          id: "uuid-product",
+          source_key: "prod-test-tomato",
+          category_id: "uuid-cat",
+          name: "Test Tomato",
+          unit: "kg",
+          price: "42.50",
+          previous_week_price: "40.00",
+          price_trend: "up",
+          retail_range: "Rs 40 - 45/kg",
+          popularity: "popular",
+          recommendation: "Trial row",
+          best_value_shop: "Local market",
+          source_note: "Seeded estimate",
+          is_approximate_price: true,
+          is_available: true
+        },
+        categoryMap
+      )
+    ).toMatchObject({
+      id: "prod-test-tomato",
+      categoryId: "cat-vegetables",
+      name: "Test Tomato",
+      price: 42.5,
+      previousWeekPrice: 40,
+      isApproximatePrice: true
+    });
+  });
+
+  it("maps slots and service fees from Supabase row names", () => {
+    expect(
+      mapDeliverySlotRow({
+        id: "slot-uuid",
+        source_key: "slot-morning",
+        label: "Morning",
+        starts_at: "2026-06-09T09:00:00+05:30",
+        ends_at: "2026-06-09T11:00:00+05:30",
+        capacity: 8,
+        reserved: 2
+      })
+    ).toMatchObject({
+      id: "slot-morning",
+      startsAt: "2026-06-09T09:00:00+05:30",
+      reserved: 2
+    });
+
+    expect(
+      mapServiceFeeRuleRow({
+        id: "fee-uuid",
+        name: "Pilot fee",
+        flat_fee: "35.00",
+        free_delivery_minimum: "1000.00",
+        is_active: true
+      })
+    ).toMatchObject({
+      flatFee: 35,
+      freeDeliveryMinimum: 1000,
+      isActive: true
+    });
+  });
+
+  it("falls back to demo catalog when Supabase config is unavailable", async () => {
+    const previousUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const previousKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    const catalog = await getCatalogData();
+
+    if (previousUrl) {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = previousUrl;
+    } else {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    }
+
+    if (previousKey) {
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = previousKey;
+    } else {
+      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    }
+
+    expect(catalog.source).toBe("demo");
+    expect(catalog.products.length).toBe(products.length);
   });
 });
 
