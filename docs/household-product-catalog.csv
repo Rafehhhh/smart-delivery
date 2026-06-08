@@ -1,0 +1,165 @@
+category_id,category_name,product_id,product_name,suggested_unit
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-matta-rice,Matta rice,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-raw-rice,Raw rice,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-basmati-rice,Basmati rice,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-sona-masoori-rice,Sona masoori rice,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-idli-rice,Idli rice,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-wheat-flour,Wheat flour,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-atta,Atta,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-maida,Maida,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-rava,Rava,kg
+cat-rice-grains-flour,"Rice, Grains & Flour",prod-oats,Oats,pack
+cat-pulses-legumes,Pulses & Legumes,prod-toor-dal,Toor dal,kg
+cat-pulses-legumes,Pulses & Legumes,prod-urad-dal,Urad dal,kg
+cat-pulses-legumes,Pulses & Legumes,prod-moong-dal,Moong dal,kg
+cat-pulses-legumes,Pulses & Legumes,prod-chana-dal,Chana dal,kg
+cat-pulses-legumes,Pulses & Legumes,prod-masoor-dal,Masoor dal,kg
+cat-pulses-legumes,Pulses & Legumes,prod-green-gram,Green gram,kg
+cat-pulses-legumes,Pulses & Legumes,prod-black-chickpeas,Black chickpeas,kg
+cat-pulses-legumes,Pulses & Legumes,prod-white-chickpeas,White chickpeas,kg
+cat-pulses-legumes,Pulses & Legumes,prod-rajma,Rajma,kg
+cat-pulses-legumes,Pulses & Legumes,prod-cowpea,Cowpea,kg
+cat-cooking-oils-ghee,Cooking Oils & Ghee,prod-coconut-oil,Coconut oil,litre
+cat-cooking-oils-ghee,Cooking Oils & Ghee,prod-sunflower-oil,Sunflower oil,litre
+cat-cooking-oils-ghee,Cooking Oils & Ghee,prod-groundnut-oil,Groundnut oil,litre
+cat-cooking-oils-ghee,Cooking Oils & Ghee,prod-gingelly-oil,Gingelly oil,litre
+cat-cooking-oils-ghee,Cooking Oils & Ghee,prod-olive-oil,Olive oil,litre
+cat-cooking-oils-ghee,Cooking Oils & Ghee,prod-palm-oil,Palm oil,litre
+cat-cooking-oils-ghee,Cooking Oils & Ghee,prod-ghee,Ghee,jar
+cat-cooking-oils-ghee,Cooking Oils & Ghee,prod-vanaspati,Vanaspati,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-salt,Salt,kg
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-sugar,Sugar,kg
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-jaggery,Jaggery,kg
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-chilli-powder,Chilli powder,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-turmeric-powder,Turmeric powder,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-coriander-powder,Coriander powder,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-pepper,Pepper,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-garam-masala,Garam masala,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-cumin,Cumin,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-mustard-seeds,Mustard seeds,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-fenugreek,Fenugreek,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-cardamom,Cardamom,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-cinnamon,Cinnamon,pack
+cat-spices-salt-sugar,"Spices, Salt & Sugar",prod-cloves,Cloves,pack
+cat-vegetables,Vegetables,prod-tomato,Tomato,kg
+cat-vegetables,Vegetables,prod-onion,Onion,kg
+cat-vegetables,Vegetables,prod-potato,Potato,kg
+cat-vegetables,Vegetables,prod-carrot,Carrot,kg
+cat-vegetables,Vegetables,prod-cucumber,Cucumber,kg
+cat-vegetables,Vegetables,prod-cabbage,Cabbage,kg
+cat-vegetables,Vegetables,prod-cauliflower,Cauliflower,piece
+cat-vegetables,Vegetables,prod-beans,Beans,kg
+cat-vegetables,Vegetables,prod-brinjal,Brinjal,kg
+cat-vegetables,Vegetables,prod-ladies-finger,Ladies finger,kg
+cat-vegetables,Vegetables,prod-bitter-gourd,Bitter gourd,kg
+cat-vegetables,Vegetables,prod-ash-gourd,Ash gourd,kg
+cat-vegetables,Vegetables,prod-pumpkin,Pumpkin,kg
+cat-vegetables,Vegetables,prod-drumstick,Drumstick,piece
+cat-vegetables,Vegetables,prod-green-chilli,Green chilli,kg
+cat-fruits,Fruits,prod-banana,Banana,dozen
+cat-fruits,Fruits,prod-apple,Apple,kg
+cat-fruits,Fruits,prod-orange,Orange,kg
+cat-fruits,Fruits,prod-mango,Mango,kg
+cat-fruits,Fruits,prod-grapes,Grapes,kg
+cat-fruits,Fruits,prod-watermelon,Watermelon,kg
+cat-fruits,Fruits,prod-papaya,Papaya,kg
+cat-fruits,Fruits,prod-pineapple,Pineapple,piece
+cat-fruits,Fruits,prod-pomegranate,Pomegranate,kg
+cat-fruits,Fruits,prod-guava,Guava,kg
+cat-fruits,Fruits,prod-sapota,Sapota,kg
+cat-fruits,Fruits,prod-plantain,Plantain,kg
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-milk,Milk,litre
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-curd,Curd,cup
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-butter,Butter,pack
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-cheese,Cheese,pack
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-paneer,Paneer,pack
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-yogurt,Yogurt,cup
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-eggs,Eggs,dozen
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-bread,Bread,pack
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-bun,Bun,pack
+cat-dairy-eggs-bakery,"Dairy, Eggs & Bakery",prod-rusk,Rusk,pack
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-chicken-broiler,Chicken broiler,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-chicken-curry-cut,Chicken curry cut,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-chicken-skinless,Chicken skinless,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-beef,Beef,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-mutton,Mutton,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-fish-sardine,Fish sardine,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-fish-ayala,Fish ayala,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-king-fish,King fish,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-prawns,Prawns,kg
+cat-meat-fish-seafood,"Meat, Fish & Seafood",prod-quail,Quail,piece
+cat-ready-food-snacks,Ready Food & Snacks,prod-chapati-pack,Chapati pack,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-parotta-pack,Parotta pack,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-noodles,Noodles,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-pasta,Pasta,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-biscuits,Biscuits,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-chips,Chips,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-mixture,Mixture,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-dates,Dates,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-cornflakes,Cornflakes,pack
+cat-ready-food-snacks,Ready Food & Snacks,prod-instant-soup,Instant soup,pack
+cat-beverages,Beverages,prod-tea-powder,Tea powder,pack
+cat-beverages,Beverages,prod-coffee-powder,Coffee powder,pack
+cat-beverages,Beverages,prod-milk-powder,Milk powder,pack
+cat-beverages,Beverages,prod-boost-health-drink,Boost/health drink,jar
+cat-beverages,Beverages,prod-juice,Juice,bottle
+cat-beverages,Beverages,prod-soft-drink,Soft drink,bottle
+cat-beverages,Beverages,prod-soda,Soda,bottle
+cat-beverages,Beverages,prod-bottled-water,Bottled water,bottle
+cat-cleaning-laundry,Cleaning & Laundry,prod-detergent-powder,Detergent powder,kg
+cat-cleaning-laundry,Cleaning & Laundry,prod-detergent-liquid,Detergent liquid,bottle
+cat-cleaning-laundry,Cleaning & Laundry,prod-washing-soap,Washing soap,piece
+cat-cleaning-laundry,Cleaning & Laundry,prod-fabric-softener,Fabric softener,bottle
+cat-cleaning-laundry,Cleaning & Laundry,prod-bleach,Bleach,bottle
+cat-cleaning-laundry,Cleaning & Laundry,prod-floor-cleaner,Floor cleaner,litre
+cat-cleaning-laundry,Cleaning & Laundry,prod-toilet-cleaner,Toilet cleaner,bottle
+cat-cleaning-laundry,Cleaning & Laundry,prod-dish-wash-bar,Dish wash bar,piece
+cat-cleaning-laundry,Cleaning & Laundry,prod-dish-wash-liquid,Dish wash liquid,bottle
+cat-cleaning-laundry,Cleaning & Laundry,prod-scrubber,Scrubber,piece
+cat-cleaning-laundry,Cleaning & Laundry,prod-cleaning-cloth,Cleaning cloth,piece
+cat-cleaning-laundry,Cleaning & Laundry,prod-garbage-bags,Garbage bags,pack
+cat-personal-care,Personal Care,prod-bath-soap,Bath soap,piece
+cat-personal-care,Personal Care,prod-shampoo,Shampoo,bottle
+cat-personal-care,Personal Care,prod-conditioner,Conditioner,bottle
+cat-personal-care,Personal Care,prod-toothpaste,Toothpaste,tube
+cat-personal-care,Personal Care,prod-toothbrush,Toothbrush,piece
+cat-personal-care,Personal Care,prod-face-wash,Face wash,tube
+cat-personal-care,Personal Care,prod-body-lotion,Body lotion,bottle
+cat-personal-care,Personal Care,prod-coconut-hair-oil,Coconut hair oil,bottle
+cat-personal-care,Personal Care,prod-shaving-cream,Shaving cream,tube
+cat-personal-care,Personal Care,prod-razor,Razor,piece
+cat-personal-care,Personal Care,prod-deodorant,Deodorant,bottle
+cat-personal-care,Personal Care,prod-sanitary-pads,Sanitary pads,pack
+cat-baby-kids-essentials,Baby & Kids Essentials,prod-baby-diaper,Baby diaper,pack
+cat-baby-kids-essentials,Baby & Kids Essentials,prod-baby-wipes,Baby wipes,pack
+cat-baby-kids-essentials,Baby & Kids Essentials,prod-baby-soap,Baby soap,piece
+cat-baby-kids-essentials,Baby & Kids Essentials,prod-baby-shampoo,Baby shampoo,bottle
+cat-baby-kids-essentials,Baby & Kids Essentials,prod-baby-lotion,Baby lotion,bottle
+cat-baby-kids-essentials,Baby & Kids Essentials,prod-baby-powder,Baby powder,bottle
+cat-baby-kids-essentials,Baby & Kids Essentials,prod-feeding-bottle,Feeding bottle,piece
+cat-baby-kids-essentials,Baby & Kids Essentials,prod-baby-cereal,Baby cereal,pack
+cat-health-first-aid,Health & First Aid,prod-bandage,Bandage,pack
+cat-health-first-aid,Health & First Aid,prod-cotton,Cotton,pack
+cat-health-first-aid,Health & First Aid,prod-antiseptic-liquid,Antiseptic liquid,bottle
+cat-health-first-aid,Health & First Aid,prod-pain-balm,Pain balm,jar
+cat-health-first-aid,Health & First Aid,prod-vapor-rub,Vapor rub,jar
+cat-health-first-aid,Health & First Aid,prod-hand-sanitizer,Hand sanitizer,bottle
+cat-health-first-aid,Health & First Aid,prod-mask,Mask,pack
+cat-health-first-aid,Health & First Aid,prod-glucose-powder,Glucose powder,pack
+cat-home-utility-stationery,Home Utility & Stationery,prod-tissue-paper,Tissue paper,pack
+cat-home-utility-stationery,Home Utility & Stationery,prod-kitchen-towel,Kitchen towel,roll
+cat-home-utility-stationery,Home Utility & Stationery,prod-aluminum-foil,Aluminum foil,roll
+cat-home-utility-stationery,Home Utility & Stationery,prod-food-wrap,Food wrap,roll
+cat-home-utility-stationery,Home Utility & Stationery,prod-matchbox,Matchbox,pack
+cat-home-utility-stationery,Home Utility & Stationery,prod-candle,Candle,pack
+cat-home-utility-stationery,Home Utility & Stationery,prod-battery,Battery,pack
+cat-home-utility-stationery,Home Utility & Stationery,prod-notebook,Notebook,piece
+cat-home-utility-stationery,Home Utility & Stationery,prod-pen,Pen,piece
+cat-home-utility-stationery,Home Utility & Stationery,prod-pencil,Pencil,piece
+cat-home-utility-stationery,Home Utility & Stationery,prod-eraser,Eraser,piece
+cat-home-utility-stationery,Home Utility & Stationery,prod-glue,Glue,piece
+cat-pet-outdoor-basics,Pet & Outdoor Basics,prod-dog-food,Dog food,pack
+cat-pet-outdoor-basics,Pet & Outdoor Basics,prod-cat-food,Cat food,pack
+cat-pet-outdoor-basics,Pet & Outdoor Basics,prod-pet-shampoo,Pet shampoo,bottle
+cat-pet-outdoor-basics,Pet & Outdoor Basics,prod-mosquito-coil,Mosquito coil,pack
+cat-pet-outdoor-basics,Pet & Outdoor Basics,prod-mosquito-repellent,Mosquito repellent,bottle
