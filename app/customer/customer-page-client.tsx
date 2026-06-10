@@ -501,7 +501,8 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
         </>
       }
     >
-      <section className="border-b border-ink/10 bg-white">
+      <div className="lg:flex lg:h-[calc(100dvh-4.75rem)] lg:flex-col lg:overflow-hidden">
+      <section className="shrink-0 border-b border-ink/10 bg-white">
         <div className="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-6">
           <div className="flex items-center gap-2 rounded-full border border-ink bg-limewash px-3 py-2">
             <Search aria-hidden className="shrink-0 text-leaf" size={18} />
@@ -556,11 +557,11 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
       <section
         className={
           isCartVisible
-            ? "mx-auto grid max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:h-[calc(100vh-8.75rem)] lg:grid-cols-[minmax(0,2.25fr)_minmax(250px,0.9fr)_minmax(260px,0.9fr)] lg:items-start lg:overflow-hidden lg:px-6"
-            : "mx-auto grid max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:h-[calc(100vh-8.75rem)] lg:grid-cols-[minmax(0,3fr)_minmax(290px,1fr)] lg:items-start lg:overflow-hidden lg:px-6"
+            ? "mx-auto grid w-full max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,2.25fr)_minmax(250px,0.9fr)_minmax(260px,0.9fr)] lg:overflow-hidden lg:px-6"
+            : "mx-auto grid w-full max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,3fr)_minmax(290px,1fr)] lg:overflow-hidden lg:px-6"
         }
       >
-        <main className="flex min-h-[560px] flex-col lg:h-full lg:min-h-0">
+        <main className="flex min-h-[560px] flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
           <section
             id="products"
             className="flex h-full min-h-0 flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-soft"
@@ -657,7 +658,7 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
         {isCartVisible ? (
           <section
             id="cart"
-            className="flex h-fit flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm scroll-mt-24 lg:sticky lg:top-20 lg:h-full lg:max-h-full lg:min-h-0"
+            className="flex h-fit flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm scroll-mt-24 lg:h-full lg:min-h-0 lg:overflow-hidden"
           >
             <div className="flex items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -889,7 +890,7 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
           </section>
         ) : null}
 
-        <aside className="h-fit space-y-2 lg:sticky lg:top-20 lg:max-h-full lg:overflow-y-auto">
+        <aside className="h-fit space-y-2 lg:h-full lg:min-h-0 lg:overflow-y-auto">
           <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
             <ProductHighlightGroup title="Popular products" icon={Flame} products={popularProducts} onSelect={selectFromHighlight} />
             <ProductHighlightGroup title="Big price changes" icon={Tag} products={priceMoverProducts} onSelect={selectFromHighlight} />
@@ -899,6 +900,7 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
 
         </aside>
       </section>
+      </div>
 
       {activeOrderUpdate ? <OrderUpdateToast update={activeOrderUpdate} onClose={() => setOrderUpdateIndex(null)} /> : null}
 
