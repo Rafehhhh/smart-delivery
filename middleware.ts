@@ -13,8 +13,14 @@ export async function middleware(request: NextRequest) {
   if (!requiredRole) return response;
 
   if (process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true") {
+    const testMode = request.cookies.get("smart_delivery_test_mode")?.value;
     const testRole = request.cookies.get("smart_delivery_test_role")?.value as UserRole | undefined;
     const testStaffStatus = request.cookies.get("smart_delivery_test_staff_status")?.value;
+
+    if (testMode === "staff_pending") {
+      if (requiredRole === "customer") return response;
+      return NextResponse.redirect(new URL("/auth/staff-pending", request.url));
+    }
 
     if (testRole && ["customer", "admin", "staff"].includes(testRole)) {
       if (testRole === "staff" && testStaffStatus === "pending" && requiredRole === "staff") {

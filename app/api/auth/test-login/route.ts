@@ -14,16 +14,29 @@ export async function POST(request: Request) {
   const parsed = await parseJson(request, testLoginSchema);
   if (!parsed.success) return fail("Invalid test login role.", 422, parsed.error.flatten());
 
-  const headers = new Headers();
-  const cookieOptions = "Path=/; Max-Age=604800; SameSite=Lax";
-  headers.append("Set-Cookie", `smart_delivery_test_role=${parsed.data.role}; ${cookieOptions}`);
-  headers.append("Set-Cookie", `smart_delivery_test_staff_status=${parsed.data.staffStatus ?? "approved"}; ${cookieOptions}`);
+  const staffStatus = parsed.data.staffStatus ?? "approved";
+  const testMode = parsed.data.role === "staff" && staffStatus === "pending" ? "staff_pending" : parsed.data.role;
+  const response = ok({
+    role: parsed.data.role,
+    staffStatus,
+    mode: testMode
+  });
 
-  return ok(
-    {
-      role: parsed.data.role,
-      staffStatus: parsed.data.staffStatus ?? "approved"
-    },
-    { headers }
-  );
+  response.cookies.set("smart_delivery_test_mode", testMode, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "lax"
+  });
+  response.cookies.set("smart_delivery_test_role", parsed.data.role, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "lax"
+  });
+  response.cookies.set("smart_delivery_test_staff_status", staffStatus, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "lax"
+  });
+
+  return response;
 }
