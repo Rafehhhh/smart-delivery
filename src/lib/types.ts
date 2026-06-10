@@ -157,6 +157,16 @@ export type Order = {
   notes?: string;
 };
 
+export type OrderEvent = {
+  id: string;
+  orderId: string;
+  actorId?: string;
+  eventType: string;
+  message: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
 export type ServiceFeeRule = {
   id: string;
   name: string;

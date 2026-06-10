@@ -15,15 +15,19 @@ export async function parseJson<T>(request: Request, schema: z.Schema<T>) {
 }
 
 export const orderItemInputSchema = z.object({
-  productId: z.string().min(1),
+  productId: z.string().min(1).optional().nullable(),
+  productName: z.string().min(1).optional(),
+  unit: z.string().min(1).optional(),
+  estimatedPrice: z.number().min(0).optional(),
   requestedQuantity: z.number().positive(),
   notes: z.string().optional()
 });
 
 export const createOrderSchema = z.object({
-  customerId: z.string().min(1),
+  customerId: z.string().min(1).optional(),
   addressId: z.string().min(1),
   slotId: z.string().min(1),
+  slotDateOffset: z.number().int().min(0).max(2).optional(),
   items: z.array(orderItemInputSchema).min(1),
   notes: z.string().optional()
 });

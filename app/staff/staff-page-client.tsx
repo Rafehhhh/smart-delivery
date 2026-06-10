@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { StatusPill } from "@/components/status-pill";
 import { calculateFinalItemsTotal } from "@/lib/calculations";
-import { orders, profiles } from "@/lib/demo-data";
+import { profiles } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
 import type { Order, Profile } from "@/lib/types";
 import { buildStaffOrderMessage, buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
@@ -43,7 +43,9 @@ type StaffProfileState = Profile & {
   isAvailable: boolean;
 };
 
-export function StaffPageClient() {
+export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
+  const [orderList, setOrderList] = useState(initialOrders);
+  const [actionError, setActionError] = useState("");
   const staff = profiles.find((profile) => profile.id === "staff-1")!;
   const [profile, setProfile] = useState<StaffProfileState>({
     ...staff,
@@ -54,7 +56,7 @@ export function StaffPageClient() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [acceptedOrderIds, setAcceptedOrderIds] = useState(
-    orders.filter((order) => order.assignedStaff?.id === staff.id && order.status !== "delivered").map((order) => order.id)
+    initialOrders.filter((order) => order.assignedStaff?.id === staff.id && order.status !== "delivered").map((order) => order.id)
   );
   const [declinedOrderIds, setDeclinedOrderIds] = useState<string[]>([]);
   const [completedOrderIds, setCompletedOrderIds] = useState<string[]>([]);
@@ -65,26 +67,49 @@ export function StaffPageClient() {
     () =>
       acceptedOrderIds
         .filter((orderId) => !completedOrderIds.includes(orderId))
-        .map((orderId) => buildStaffOrder(orders.find((order) => order.id === orderId)!, profile)),
-    [acceptedOrderIds, completedOrderIds, profile]
+        .map((orderId) => orderList.find((order) => order.id === orderId))
+        .filter((order): order is Order => Boolean(order))
+        .map((order) => buildStaffOrder(order, profile)),
+    [acceptedOrderIds, completedOrderIds, orderList, profile]
   );
   const activeOrder = activeOrders[0];
   const hasActiveOrder = Boolean(activeOrder);
-  const openOffers = orders.filter(
+  const openOffers = orderList.filter(
     (order) => !order.assignedStaff && !acceptedOrderIds.includes(order.id) && !declinedOrderIds.includes(order.id)
   ).sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime());
-  const deliveryHistory = orders
+  const deliveryHistory = orderList
     .filter((order) => completedOrderIds.includes(order.id) || order.status === "delivered")
     .map((order) => buildStaffOrder(order, profile));
-  function acceptOrder(orderId: string) {
+  async function acceptOrder(orderId: string) {
     if (!profile.isAvailable || hasActiveOrder) return;
-    setAcceptedOrderIds((current) => [...current, orderId]);
-    setActiveStep(0);
+    setActionError("");
+    try {
+      const response = await fetch(`/api/staff/orders/${orderId}/accept`, { method: "POST" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not accept order.");
+      const updatedOrder = payload.data?.order as Order | undefined;
+      if (updatedOrder) {
+        setOrderList((current) => current.map((order) => (order.id === orderId ? updatedOrder : order)));
+      }
+      setAcceptedOrderIds((current) => [...current, orderId]);
+      setActiveStep(0);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Could not accept order.");
+    }
   }
 
-  function completeOrder(orderId: string) {
-    setCompletedOrderIds((current) => [...current, orderId]);
-    setActiveStep(0);
+  async function completeOrder(orderId: string) {
+    setActionError("");
+    try {
+      const response = await fetch(`/api/staff/orders/${orderId}/complete`, { method: "POST" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not complete delivery.");
+      setOrderList((current) => current.map((order) => (order.id === orderId ? { ...order, status: "delivered", paymentState: "paid" } : order)));
+      setCompletedOrderIds((current) => [...current, orderId]);
+      setActiveStep(0);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Could not complete delivery.");
+    }
   }
 
   function toggleBoughtItem(itemId: string) {
@@ -138,6 +163,7 @@ export function StaffPageClient() {
             onAccept={acceptOrder}
             onDecline={(orderId) => setDeclinedOrderIds((current) => [...current, orderId])}
           />
+          {actionError ? <p className="rounded-md bg-clay/10 px-3 py-2 text-sm font-semibold text-clay">{actionError}</p> : null}
 
           <ActivityChecklist hasActiveOrder={hasActiveOrder} activeStep={activeStep} onStepChange={setActiveStep} />
         </aside>
