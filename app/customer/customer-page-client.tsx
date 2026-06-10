@@ -313,6 +313,25 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
   const activeOrderUpdate = orderUpdateIndex === null ? null : demoOrderUpdates[orderUpdateIndex];
 
   useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+
+    function syncPageScrollLock() {
+      const shouldLock = desktopQuery.matches;
+      document.documentElement.classList.toggle("customer-page-lock", shouldLock);
+      document.body.classList.toggle("customer-page-lock", shouldLock);
+    }
+
+    syncPageScrollLock();
+    desktopQuery.addEventListener("change", syncPageScrollLock);
+
+    return () => {
+      desktopQuery.removeEventListener("change", syncPageScrollLock);
+      document.documentElement.classList.remove("customer-page-lock");
+      document.body.classList.remove("customer-page-lock");
+    };
+  }, []);
+
+  useEffect(() => {
     function closeProductMenus(event: PointerEvent) {
       if (!isFilterOpen && !isSortOpen) return;
       const target = event.target;

@@ -25,6 +25,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@media (min-width: 1024px) {
+  html.customer-page-lock,
+  body.customer-page-lock {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
 button,
 input,
 select,
