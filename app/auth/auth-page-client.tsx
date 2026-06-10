@@ -20,7 +20,7 @@ const testLoginOptions: TestLoginOption[] = [
   { label: "Test as Customer", role: "customer", destination: "/customer" },
   { label: "Test as Admin", role: "admin", destination: "/admin" },
   { label: "Test as Staff", role: "staff", staffStatus: "approved", destination: "/staff" },
-  { label: "Test as Staff pending", role: "staff", staffStatus: "pending", destination: "/staff" }
+  { label: "Test as Staff pending", role: "staff", staffStatus: "pending", destination: "/auth/staff-pending" }
 ];
 
 export function AuthPageClient() {
