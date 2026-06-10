@@ -5,9 +5,9 @@ import { Bike, Clock3, HeartHandshake, MapPinned, ShieldCheck, ShoppingBasket } 
 
 export default function HomePage() {
   const signInRoles: { href: Route; title: string; text: string; icon: typeof Bike }[] = [
-    { href: "/customer", title: "Customer", text: "Create orders and track delivery.", icon: ShoppingBasket },
-    { href: "/admin", title: "Admin", text: "Manage orders, staff, slots, and payments.", icon: ShieldCheck },
-    { href: "/staff", title: "Staff", text: "Handle assigned orders and cash settlement.", icon: Bike }
+    { href: "/auth?next=/customer", title: "Customer", text: "Create orders and track delivery.", icon: ShoppingBasket },
+    { href: "/auth?next=/admin", title: "Admin", text: "Manage orders, staff, slots, and payments.", icon: ShieldCheck },
+    { href: "/auth?next=/staff", title: "Staff", text: "Handle assigned orders and cash settlement.", icon: Bike }
   ];
 
   return (
