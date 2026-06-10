@@ -8,6 +8,20 @@ import { Bike, ShieldCheck, ShoppingBasket, Smartphone } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AuthStep = "phone" | "otp";
+type TestLoginOption = {
+  label: string;
+  role: "customer" | "admin" | "staff";
+  staffStatus?: "approved" | "pending";
+  destination: Route;
+};
+
+const isTestLoginEnabled = process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true";
+const testLoginOptions: TestLoginOption[] = [
+  { label: "Test as Customer", role: "customer", destination: "/customer" },
+  { label: "Test as Admin", role: "admin", destination: "/admin" },
+  { label: "Test as Staff", role: "staff", staffStatus: "approved", destination: "/staff" },
+  { label: "Test as Staff pending", role: "staff", staffStatus: "pending", destination: "/staff" }
+];
 
 export function AuthPageClient() {
   const router = useRouter();
@@ -68,6 +82,30 @@ export function AuthPageClient() {
       await resolveDestination();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not verify OTP.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function submitTestLogin(option: TestLoginOption) {
+    setError("");
+    setStatus("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/auth/test-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: option.role,
+          staffStatus: option.staffStatus
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Test login failed.");
+      router.replace(option.destination);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Test login failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -161,6 +199,28 @@ export function AuthPageClient() {
           >
             Change number
           </button>
+        ) : null}
+
+        {isTestLoginEnabled ? (
+          <div className="mt-5 rounded-xl border border-dashed border-ink/20 bg-limewash p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-leaf">Testing access</p>
+            <p className="mt-1 text-xs leading-5 text-ink/58">
+              Use these preview-only buttons until Twilio phone OTP is configured.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {testLoginOptions.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => submitTestLogin(option)}
+                  className="focus-ring inline-flex items-center justify-center rounded-full border border-ink/15 bg-white px-3 py-2 text-xs font-semibold hover:border-leaf/40 hover:text-leaf disabled:opacity-50"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
       </form>
     </section>

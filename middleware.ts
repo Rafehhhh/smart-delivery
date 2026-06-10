@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { authRedirectPath, requiredRoleForPath, type AuthProfile, type StaffSignupRequest } from "@/lib/auth-flow";
+import { authRedirectPath, requiredRoleForPath, roleHome, type AuthProfile, type StaffSignupRequest } from "@/lib/auth-flow";
+import type { UserRole } from "@/lib/types";
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({
@@ -10,6 +11,21 @@ export async function middleware(request: NextRequest) {
   const requiredRole = requiredRoleForPath(pathname);
 
   if (!requiredRole) return response;
+
+  if (process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true") {
+    const testRole = request.cookies.get("smart_delivery_test_role")?.value as UserRole | undefined;
+    const testStaffStatus = request.cookies.get("smart_delivery_test_staff_status")?.value;
+
+    if (testRole && ["customer", "admin", "staff"].includes(testRole)) {
+      if (testRole === "staff" && testStaffStatus === "pending" && requiredRole === "staff") {
+        return NextResponse.redirect(new URL("/auth/staff-pending", request.url));
+      }
+
+      if (testRole === requiredRole) return response;
+
+      return NextResponse.redirect(new URL(roleHome(testRole), request.url));
+    }
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
