@@ -1,0 +1,84 @@
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import { authRedirectPath, requiredRoleForPath, roleHome, type AuthProfile, type StaffSignupRequest } from "@/lib/auth-flow";
+import type { UserRole } from "@/lib/types";
+
+export async function middleware(request: NextRequest) {
+  const response = NextResponse.next({
+    request
+  });
+  const pathname = request.nextUrl.pathname;
+  const requiredRole = requiredRoleForPath(pathname);
+
+  if (!requiredRole) return response;
+
+  if (process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true") {
+    const testMode = request.cookies.get("smart_delivery_test_mode")?.value;
+    const testRole = request.cookies.get("smart_delivery_test_role")?.value as UserRole | undefined;
+    const testStaffStatus = request.cookies.get("smart_delivery_test_staff_status")?.value;
+
+    if (testMode === "staff_pending") {
+      if (requiredRole === "customer") return response;
+      return NextResponse.redirect(new URL("/auth/staff-pending", request.url));
+    }
+
+    if (testRole && ["customer", "admin", "staff"].includes(testRole)) {
+      if (testRole === "staff" && testStaffStatus === "pending" && requiredRole === "staff") {
+        return NextResponse.redirect(new URL("/auth/staff-pending", request.url));
+      }
+
+      if (testRole === requiredRole) return response;
+
+      return NextResponse.redirect(new URL(roleHome(testRole), request.url));
+    }
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return response;
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          request.cookies.set(name, value);
+          response.cookies.set(name, value, options);
+        });
+      }
+    }
+  });
+
+  const userResult = await supabase.auth.getUser();
+  const user = userResult.data.user;
+
+  if (!user) {
+    return NextResponse.redirect(new URL(`/auth?next=${encodeURIComponent(pathname)}`, request.url));
+  }
+
+  const [profileResult, addressResult, staffRequestResult] = await Promise.all([
+    supabase.from("profiles").select("id, role, full_name, phone").eq("id", user.id).maybeSingle(),
+    supabase.from("customer_addresses").select("id").eq("customer_id", user.id).limit(1).maybeSingle(),
+    supabase.from("staff_signup_requests").select("status").eq("user_id", user.id).maybeSingle()
+  ]);
+
+  const profile = (profileResult.data as AuthProfile | null) ?? null;
+  const redirectTo = authRedirectPath({
+    next: pathname,
+    profile,
+    hasCustomerAddress: Boolean(addressResult.data),
+    staffRequestStatus: (staffRequestResult.data as Pick<StaffSignupRequest, "status"> | null)?.status ?? null
+  });
+
+  if (redirectTo !== pathname) {
+    return NextResponse.redirect(new URL(redirectTo, request.url));
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: ["/admin/:path*", "/customer/:path*", "/staff/:path*"]
+};

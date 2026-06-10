@@ -3,10 +3,30 @@ import { AppShell } from "@/components/app-shell";
 import { customerReviews, orders, profiles } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
 import { getOrderTotal, processingStatuses } from "@/lib/admin-metrics";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { StaffSignupRequest } from "@/lib/auth-flow";
 import { AdminHomeHeader } from "../admin-header";
+import { StaffRequestsPanel } from "./staff-requests-panel";
 import { ArrowLeft, MessageCircle, Users } from "lucide-react";
 
-export default function AdminStaffRecordsPage() {
+export const dynamic = "force-dynamic";
+
+async function getStaffRequests() {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const result = await supabase
+      .from("staff_signup_requests")
+      .select("id, user_id, full_name, phone, route_area, vehicle, note, status, reviewed_by, reviewed_at, created_at, updated_at")
+      .order("created_at", { ascending: false });
+
+    return (result.data ?? []) as StaffSignupRequest[];
+  } catch {
+    return [];
+  }
+}
+
+export default async function AdminStaffRecordsPage() {
+  const staffRequests = await getStaffRequests();
   const staff = profiles.filter((profile) => profile.role === "staff");
   const staffRows = staff.map((member) => {
     const memberOrders = orders.filter((order) => order.assignedStaff?.id === member.id);
@@ -111,6 +131,8 @@ export default function AdminStaffRecordsPage() {
         </section>
 
         <aside className="space-y-3">
+          <StaffRequestsPanel requests={staffRequests} />
+
           <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
             <h2 className="text-base font-semibold">Staff summary</h2>
             <div className="mt-2 grid gap-1.5">

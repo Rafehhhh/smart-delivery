@@ -17,6 +17,7 @@ import {
   mapProductRow,
   mapServiceFeeRuleRow
 } from "./supabase-catalog";
+import { authRedirectPath } from "./auth-flow";
 import type { DeliverySlot, OrderItem, ServiceFeeRule } from "./types";
 
 const items: OrderItem[] = [
@@ -39,6 +40,49 @@ const items: OrderItem[] = [
     finalPrice: 36
   }
 ];
+
+describe("auth role redirects", () => {
+  it("sends a new customer to onboarding before opening customer workspace", () => {
+    expect(
+      authRedirectPath({
+        next: "/customer",
+        profile: null,
+        hasCustomerAddress: false
+      })
+    ).toBe("/auth/onboarding?next=%2Fcustomer");
+  });
+
+  it("sends a customer requesting staff access to pending approval when request is pending", () => {
+    expect(
+      authRedirectPath({
+        next: "/staff",
+        profile: {
+          id: "profile-1",
+          role: "customer",
+          full_name: "Applicant",
+          phone: "+919999999999"
+        },
+        hasCustomerAddress: true,
+        staffRequestStatus: "pending"
+      })
+    ).toBe("/auth/staff-pending");
+  });
+
+  it("allows approved staff profile to open staff workspace", () => {
+    expect(
+      authRedirectPath({
+        next: "/staff",
+        profile: {
+          id: "profile-1",
+          role: "staff",
+          full_name: "Staff",
+          phone: "+919999999999"
+        },
+        hasCustomerAddress: false
+      })
+    ).toBe("/staff");
+  });
+});
 
 describe("slot capacity", () => {
   it("detects available slots and remaining capacity", () => {
