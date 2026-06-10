@@ -3,11 +3,11 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { calculateEstimate, calculateServiceFee, isSlotAvailable, remainingSlotCapacity } from "@/lib/calculations";
+import { calculateEstimate, calculateServiceFee, isSlotSelectable, remainingSlotCapacity } from "@/lib/calculations";
 import { orders } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
 import type { CatalogData } from "@/lib/supabase-catalog";
-import type { Order, OrderItem, Product, ProductCategory } from "@/lib/types";
+import type { DeliverySlot, Order, OrderItem, Product, ProductCategory } from "@/lib/types";
 import {
   CalendarClock,
   CheckCircle2,
@@ -22,6 +22,7 @@ import {
   Send,
   ShoppingCart,
   Tag,
+  Trash2,
   UserRound,
   X
 } from "lucide-react";
@@ -52,6 +53,7 @@ type QuantityControlProps = {
 
 type ProductSortMode = "name_asc" | "price_low" | "price_high";
 type ProductPriceRange = "all" | "under_50" | "50_100" | "100_250" | "above_250";
+type SlotDateOffset = 0 | 1 | 2;
 type DemoOrderUpdate = {
   title: string;
   message: string;
@@ -73,6 +75,11 @@ const sortLabels: Record<ProductSortMode, string> = {
 
 const priceRangeOptions: ProductPriceRange[] = ["all", "under_50", "50_100", "100_250", "above_250"];
 const sortOptions: ProductSortMode[] = ["name_asc", "price_low", "price_high"];
+const slotDateOptions: { offset: SlotDateOffset; label: string }[] = [
+  { offset: 0, label: "Today" },
+  { offset: 1, label: "Tomorrow" },
+  { offset: 2, label: "Day after tomorrow" }
+];
 
 const demoOrderUpdates: DemoOrderUpdate[] = [
   {
@@ -205,7 +212,8 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
   const [sortMode, setSortMode] = useState<ProductSortMode>("name_asc");
   const [draftQuantities, setDraftQuantities] = useState<Record<string, number>>({});
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [selectedSlotId, setSelectedSlotId] = useState(slots.find(isSlotAvailable)?.id ?? slots[0].id);
+  const [selectedSlotDateOffset, setSelectedSlotDateOffset] = useState<SlotDateOffset>(0);
+  const [selectedSlotId, setSelectedSlotId] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -233,7 +241,7 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
       .filter((product) => matchesPriceRange(product, selectedPriceRange))
       .filter((product) => matchesSearch(product, globalSearchTerm))
       .sort((first, second) => sortProducts(first, second, sortMode));
-  }, [globalSearchTerm, selectedCategoryId, selectedPriceRange, sortMode]);
+  }, [globalSearchTerm, products, selectedCategoryId, selectedPriceRange, sortMode]);
   const activeCategoryLabel = selectedCategory?.name ?? "All categories";
   const popularProducts = useMemo(
     () =>
@@ -241,7 +249,7 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
         .filter((product) => product.popularity === "top_selling" || product.popularity === "popular")
         .sort((first, second) => popularityRank(second) - popularityRank(first) || first.name.localeCompare(second.name))
         .slice(0, 4),
-    []
+    [products]
   );
   const priceMoverProducts = useMemo(
     () =>
@@ -249,8 +257,19 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
         .filter((product) => typeof product.previousWeekPrice === "number")
         .sort((first, second) => Math.abs(priceDifference(second)) - Math.abs(priceDifference(first)))
         .slice(0, 4),
-    []
+    [products]
   );
+  const availableSlots = useMemo(
+    () =>
+      slots
+        .map((slot) => createDatedSlot(slot, selectedSlotDateOffset))
+        .filter((slot) => isSlotSelectable(slot)),
+    [selectedSlotDateOffset, slots]
+  );
+  useEffect(() => {
+    if (availableSlots.some((slot) => slot.id === selectedSlotId)) return;
+    setSelectedSlotId(availableSlots[0]?.id ?? "");
+  }, [availableSlots, selectedSlotId]);
   const cartItems: OrderItem[] = useMemo(
     () =>
       cart
@@ -279,17 +298,15 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
           };
         })
         .filter(Boolean) as OrderItem[],
-    [cart]
+    [cart, products]
   );
 
   const subtotal = calculateEstimate(cartItems);
   const serviceFee = calculateServiceFee(subtotal, serviceFeeRule);
   const payable = subtotal + serviceFee;
-  const selectedSlot = slots.find((slot) => slot.id === selectedSlotId);
+  const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId);
   const customerOrders = orders.filter((order) => order.customer.id === "customer-1");
   const isCartVisible = cartItems.length > 0;
-  const isPinnedCart = cartItems.length === 1;
-  const isScrollableCart = cartItems.length > 8;
   const latestOrder = [...customerOrders].sort(
     (first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
   )[0];
@@ -371,6 +388,15 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
         })
         .filter(Boolean) as CartLine[]
     );
+  }
+
+  function removeCartLine(lineKey: string) {
+    setCart((current) => current.filter((line) => getCartLineKey(line) !== lineKey));
+    setOpenNoteIds((current) => {
+      const next = { ...current };
+      delete next[lineKey];
+      return next;
+    });
   }
 
   function setCartQuantity(lineKey: string, quantity: number) {
@@ -530,11 +556,11 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
       <section
         className={
           isCartVisible
-            ? "mx-auto grid max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:grid-cols-[minmax(0,2.25fr)_minmax(250px,0.9fr)_minmax(260px,0.9fr)] lg:px-6"
-            : "mx-auto grid max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:grid-cols-[minmax(0,3fr)_minmax(290px,1fr)] lg:px-6"
+            ? "mx-auto grid max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:h-[calc(100vh-8.75rem)] lg:grid-cols-[minmax(0,2.25fr)_minmax(250px,0.9fr)_minmax(260px,0.9fr)] lg:items-start lg:overflow-hidden lg:px-6"
+            : "mx-auto grid max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:h-[calc(100vh-8.75rem)] lg:grid-cols-[minmax(0,3fr)_minmax(290px,1fr)] lg:items-start lg:overflow-hidden lg:px-6"
         }
       >
-        <main className="flex h-[794px] min-h-0 flex-col">
+        <main className="flex min-h-[560px] flex-col lg:h-full lg:min-h-0">
           <section
             id="products"
             className="flex h-full min-h-0 flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-soft"
@@ -631,11 +657,7 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
         {isCartVisible ? (
           <section
             id="cart"
-            className={
-              isPinnedCart || isScrollableCart
-                ? "flex h-fit max-h-[calc(100vh-6rem)] min-h-[calc(100vh-6rem)] flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm scroll-mt-24 lg:sticky lg:top-20"
-                : "flex h-fit flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm scroll-mt-24"
-            }
+            className="flex h-fit flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm scroll-mt-24 lg:sticky lg:top-20 lg:h-full lg:max-h-full lg:min-h-0"
           >
             <div className="flex items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -645,7 +667,7 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
               <span className="text-xs font-semibold text-ink/56">{cartItems.length} items</span>
             </div>
 
-              <div className={isPinnedCart || isScrollableCart ? "mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1" : "mt-2 space-y-1.5 pr-1"}>
+              <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
                 {cartItems.map((item, index) => {
                   const line = cart[index];
                   const lineKey = getCartLineKey(line);
@@ -664,9 +686,20 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
                               : `${formatQuantity(item.requestedQuantity, item.unit)} x ${formatCurrency(item.estimatedPrice)}`}
                           </p>
                         </div>
-                        <strong className="shrink-0 text-xs">
-                          {isCustomItem || isEstimatePending ? "Pending" : formatCurrency(item.requestedQuantity * item.estimatedPrice)}
-                        </strong>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <strong className="text-xs">
+                            {isCustomItem || isEstimatePending ? "Pending" : formatCurrency(item.requestedQuantity * item.estimatedPrice)}
+                          </strong>
+                          <button
+                            type="button"
+                            onClick={() => removeCartLine(lineKey)}
+                            className="focus-ring inline-flex h-6 w-6 items-center justify-center rounded-full border border-ink/15 bg-white text-ink/54 hover:border-clay/40 hover:text-clay"
+                            aria-label={`Remove ${item.productName} from cart`}
+                            title="Remove item"
+                          >
+                            <Trash2 aria-hidden size={13} />
+                          </button>
+                        </div>
                       </div>
 
                       {!isNoteOpen ? (
@@ -789,18 +822,40 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
                 <CalendarClock aria-hidden size={16} />
                 Delivery slot
               </label>
-              <select
-                id="slot"
-                className="focus-ring mt-1.5 w-full rounded-xl border border-ink/15 bg-white px-3 py-2 text-xs"
-                value={selectedSlotId}
-                onChange={(event) => setSelectedSlotId(event.target.value)}
-              >
-                {slots.map((slot) => (
-                  <option key={slot.id} value={slot.id} disabled={!isSlotAvailable(slot)}>
-                    {slot.label} - {remainingSlotCapacity(slot)} left
-                  </option>
+              <div className="mt-1.5 grid grid-cols-3 gap-1">
+                {slotDateOptions.map((option) => (
+                  <button
+                    key={option.offset}
+                    type="button"
+                    onClick={() => setSelectedSlotDateOffset(option.offset)}
+                    className={
+                      selectedSlotDateOffset === option.offset
+                        ? "focus-ring rounded-full bg-leaf px-2 py-1 text-[11px] font-semibold text-white"
+                        : "focus-ring rounded-full border border-ink/15 bg-white px-2 py-1 text-[11px] font-semibold text-ink/68 hover:border-leaf/40 hover:text-leaf"
+                    }
+                  >
+                    {option.label}
+                  </button>
                 ))}
-              </select>
+              </div>
+              {availableSlots.length > 0 ? (
+                <select
+                  id="slot"
+                  className="focus-ring mt-1.5 w-full rounded-xl border border-ink/15 bg-white px-3 py-2 text-xs"
+                  value={selectedSlotId}
+                  onChange={(event) => setSelectedSlotId(event.target.value)}
+                >
+                  {availableSlots.map((slot) => (
+                    <option key={slot.id} value={slot.id}>
+                      {slot.label} - {remainingSlotCapacity(slot)} left
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="mt-1.5 rounded-xl border border-dashed border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink/58">
+                  No available slots for this date. Please choose another date.
+                </p>
+              )}
             </div>
 
             <div className="mt-2 shrink-0 space-y-1 rounded-xl bg-limewash p-2">
@@ -834,7 +889,7 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
           </section>
         ) : null}
 
-        <aside className="h-fit space-y-2 lg:sticky lg:top-20">
+        <aside className="h-fit space-y-2 lg:sticky lg:top-20 lg:max-h-full lg:overflow-y-auto">
           <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
             <ProductHighlightGroup title="Popular products" icon={Flame} products={popularProducts} onSelect={selectFromHighlight} />
             <ProductHighlightGroup title="Big price changes" icon={Tag} products={priceMoverProducts} onSelect={selectFromHighlight} />
@@ -1359,6 +1414,38 @@ function ProductHighlightGroup({
 
 function getCartLineKey(line: CartLine) {
   return line.kind === "custom" ? line.id : line.productId;
+}
+
+function createDatedSlot(slot: DeliverySlot, dateOffset: SlotDateOffset) {
+  const now = new Date();
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + dateOffset);
+
+  const sourceStart = new Date(slot.startsAt);
+  const sourceEnd = new Date(slot.endsAt);
+  const startsAt = new Date(targetDate);
+  startsAt.setHours(sourceStart.getHours(), sourceStart.getMinutes(), 0, 0);
+  const endsAt = new Date(targetDate);
+  endsAt.setHours(sourceEnd.getHours(), sourceEnd.getMinutes(), 0, 0);
+
+  const dateLabel = slotDateOptions.find((option) => option.offset === dateOffset)?.label ?? "Selected day";
+  const timeLabel = `${formatSlotTime(startsAt)} - ${formatSlotTime(endsAt)}`;
+
+  return {
+    ...slot,
+    id: `${slot.id}-${dateOffset}`,
+    label: `${dateLabel}, ${timeLabel}`,
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString()
+  };
+}
+
+function formatSlotTime(date: Date) {
+  return date.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  });
 }
 
 function getQuantityStep(unit: string) {

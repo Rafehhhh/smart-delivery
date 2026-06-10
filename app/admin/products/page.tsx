@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { localShops } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
 import { getCatalogData } from "@/lib/supabase-catalog";
 import { AdminHomeHeader } from "../admin-header";
-import { ArrowLeft, MapPin, PackageSearch, Phone, Store, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowLeft, PackageSearch, TrendingDown, TrendingUp } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +31,7 @@ export default async function AdminProductsPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-3 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1.35fr)_320px] lg:px-6">
+      <section className="mx-auto max-w-7xl px-2 py-3 sm:px-4 lg:px-6">
         <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/10 pb-2">
             <div>
@@ -107,31 +106,6 @@ export default async function AdminProductsPage() {
             </table>
           </div>
         </section>
-
-        <aside className="space-y-4">
-          <section className="rounded-md border border-ink/10 bg-white p-4 shadow-sm">
-            <h2 className="flex items-center gap-2 text-xl font-semibold">
-              <Store aria-hidden size={20} />
-              Shops near Koyilandy
-            </h2>
-            <div className="mt-4 space-y-3">
-              {localShops.map((shop) => (
-                <div key={shop.id} className="rounded-md border border-ink/10 bg-limewash p-3">
-                  <p className="font-semibold">{shop.name}</p>
-                  <p className="mt-2 flex gap-2 text-sm leading-6 text-ink/62">
-                    <MapPin aria-hidden className="mt-1 shrink-0 text-leaf" size={15} />
-                    {shop.address}
-                  </p>
-                  <p className="mt-2 flex gap-2 text-sm text-ink/62">
-                    <Phone aria-hidden className="shrink-0 text-leaf" size={15} />
-                    {shop.contactPhone ?? "Admin verification needed"}
-                  </p>
-                  {shop.discountNote ? <p className="mt-2 text-xs leading-5 text-ink/58">{shop.discountNote}</p> : null}
-                </div>
-              ))}
-            </div>
-          </section>
-        </aside>
       </section>
     </AppShell>
   );

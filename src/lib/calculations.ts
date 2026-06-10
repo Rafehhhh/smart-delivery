@@ -4,6 +4,10 @@ export function isSlotAvailable(slot: DeliverySlot) {
   return slot.reserved < slot.capacity;
 }
 
+export function isSlotSelectable(slot: DeliverySlot, now = new Date()) {
+  return isSlotAvailable(slot) && new Date(slot.endsAt).getTime() > now.getTime();
+}
+
 export function remainingSlotCapacity(slot: DeliverySlot) {
   return Math.max(slot.capacity - slot.reserved, 0);
 }

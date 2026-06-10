@@ -6,6 +6,7 @@ import {
   canTransitionOrder,
   derivePaymentState,
   isSlotAvailable,
+  isSlotSelectable,
   reconcileCash,
   remainingSlotCapacity
 } from "./calculations";
@@ -65,6 +66,32 @@ describe("slot capacity", () => {
         reserved: 3
       })
     ).toBe(0);
+  });
+
+  it("rejects same-day slots that have already ended", () => {
+    const slot: DeliverySlot = {
+      id: "slot",
+      label: "Morning",
+      startsAt: "2026-06-09T09:00:00+05:30",
+      endsAt: "2026-06-09T11:00:00+05:30",
+      capacity: 8,
+      reserved: 2
+    };
+
+    expect(isSlotSelectable(slot, new Date("2026-06-09T12:00:00+05:30"))).toBe(false);
+  });
+
+  it("accepts future slots with remaining capacity", () => {
+    const slot: DeliverySlot = {
+      id: "slot",
+      label: "Evening",
+      startsAt: "2026-06-09T18:00:00+05:30",
+      endsAt: "2026-06-09T20:00:00+05:30",
+      capacity: 8,
+      reserved: 2
+    };
+
+    expect(isSlotSelectable(slot, new Date("2026-06-09T12:00:00+05:30"))).toBe(true);
   });
 });
 
