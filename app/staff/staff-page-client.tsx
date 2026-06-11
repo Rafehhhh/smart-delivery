@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { StatusPill } from "@/components/status-pill";
-import { calculateFinalItemsTotal } from "@/lib/calculations";
+import { areAllOrderItemsFinalized, calculateFinalItemsTotal } from "@/lib/calculations";
 import { profiles } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
-import type { Order, Profile } from "@/lib/types";
+import type { Order, OrderStatus, Profile } from "@/lib/types";
 import { buildStaffOrderMessage, buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 import {
   Banknote,
@@ -29,13 +29,13 @@ import {
 } from "lucide-react";
 
 const checklist = [
-  "Confirm order with customer",
-  "Collect advance cash if needed",
-  "Purchase market items",
-  "Update final invoice",
-  "Collect balance or refund difference",
-  "Mark delivery complete"
-];
+  { label: "Confirm order with customer", status: "confirmed" },
+  { label: "Collect advance cash if needed" },
+  { label: "Purchase market items", status: "shopping" },
+  { label: "Update final invoice", status: "ready_for_delivery" },
+  { label: "Collect balance or refund difference" },
+  { label: "Mark delivery complete", status: "delivered" }
+] satisfies Array<{ label: string; status?: OrderStatus }>;
 
 type StaffProfileState = Profile & {
   area: string;
@@ -61,7 +61,7 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
   const [declinedOrderIds, setDeclinedOrderIds] = useState<string[]>([]);
   const [completedOrderIds, setCompletedOrderIds] = useState<string[]>([]);
   const [boughtItemIds, setBoughtItemIds] = useState<string[]>([]);
-  const [activeStep, setActiveStep] = useState(2);
+  const [activeStep, setActiveStep] = useState(0);
 
   const activeOrders = useMemo(
     () =>
@@ -74,12 +74,23 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
   );
   const activeOrder = activeOrders[0];
   const hasActiveOrder = Boolean(activeOrder);
+  const activeOrderId = activeOrder?.id;
+  const activeOrderStatus = activeOrder?.status;
   const openOffers = orderList.filter(
     (order) => !order.assignedStaff && !acceptedOrderIds.includes(order.id) && !declinedOrderIds.includes(order.id)
   ).sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime());
   const deliveryHistory = orderList
     .filter((order) => completedOrderIds.includes(order.id) || order.status === "delivered")
     .map((order) => buildStaffOrder(order, profile));
+
+  useEffect(() => {
+    if (!activeOrderId || !activeOrderStatus) {
+      setActiveStep(0);
+      return;
+    }
+    setActiveStep((current) => Math.max(current, stepFromOrderStatus(activeOrderStatus)));
+  }, [activeOrderId, activeOrderStatus]);
+
   async function acceptOrder(orderId: string) {
     if (!profile.isAvailable || hasActiveOrder) return;
     setActionError("");
@@ -98,7 +109,101 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
     }
   }
 
+  async function updateOrderStatus(orderId: string, nextStatus: OrderStatus, nextStep: number) {
+    const targetOrder = orderList.find((order) => order.id === orderId);
+    const isTryingToFinalize = nextStatus === "ready_for_delivery";
+    const allItemsBought = targetOrder ? targetOrder.items.every((item) => boughtItemIds.includes(item.id)) : false;
+    if (isTryingToFinalize && !allItemsBought) {
+      setActionError("Mark every product as bought before finalizing the invoice or setting ready for delivery.");
+      return;
+    }
+
+    setActionError("");
+    try {
+      const response = await fetch(`/api/staff/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not update order status.");
+
+      const updatedOrder = payload.data?.order as Order | undefined;
+      const status = (payload.data?.status ?? updatedOrder?.status ?? nextStatus) as OrderStatus;
+      setOrderList((current) =>
+        current.map((order) =>
+          order.id === orderId
+            ? updatedOrder ?? { ...order, status, paymentState: status === "delivered" ? "paid" : order.paymentState }
+            : order
+        )
+      );
+      if (status === "delivered") {
+        setCompletedOrderIds((current) => (current.includes(orderId) ? current : [...current, orderId]));
+      }
+      setActiveStep(nextStep);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Could not update order status.");
+    }
+  }
+
+  async function finalizeBoughtItems(order: Order, nextStep: number) {
+    const allItemsBought = order.items.every((item) => boughtItemIds.includes(item.id));
+    if (!allItemsBought) {
+      setActionError("Mark every product as bought before finalizing the invoice or setting ready for delivery.");
+      return;
+    }
+
+    setActionError("");
+    try {
+      const response = await fetch(`/api/staff/orders/${order.id}/finalize-items`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: order.items.map((item) => ({
+            itemId: item.id,
+            finalQuantity: item.finalQuantity ?? item.requestedQuantity,
+            finalPrice: item.finalPrice ?? item.estimatedPrice
+          }))
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not finalize invoice.");
+
+      const finalizedItems = (payload.data?.items ?? []) as Order["items"];
+      setOrderList((current) =>
+        current.map((entry) =>
+          entry.id === order.id
+            ? {
+                ...entry,
+                items: entry.items.map((item) => {
+                  const finalizedItem = finalizedItems.find((finalItem) => finalItem.id === item.id);
+                  return finalizedItem
+                    ? { ...item, finalQuantity: finalizedItem.finalQuantity, finalPrice: finalizedItem.finalPrice }
+                    : item;
+                }),
+                finalTotal: payload.data?.finalTotal ?? entry.finalTotal,
+                serviceFee: payload.data?.serviceFee ?? entry.serviceFee,
+                paymentState: payload.data?.paymentState ?? entry.paymentState,
+                cash: payload.data?.cash ?? entry.cash,
+                status: "ready_for_delivery"
+              }
+            : entry
+        )
+      );
+      setActiveStep(nextStep);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Could not finalize invoice.");
+    }
+  }
+
   async function completeOrder(orderId: string) {
+    const targetOrder = orderList.find((order) => order.id === orderId);
+    const allItemsBought = targetOrder ? targetOrder.items.every((item) => boughtItemIds.includes(item.id)) : false;
+    if (!allItemsBought) {
+      setActionError("Mark every product as bought before completing delivery.");
+      return;
+    }
+
     setActionError("");
     try {
       const response = await fetch(`/api/staff/orders/${orderId}/complete`, { method: "POST" });
@@ -106,7 +211,7 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
       if (!response.ok) throw new Error(payload.error ?? "Could not complete delivery.");
       setOrderList((current) => current.map((order) => (order.id === orderId ? { ...order, status: "delivered", paymentState: "paid" } : order)));
       setCompletedOrderIds((current) => [...current, orderId]);
-      setActiveStep(0);
+      setActiveStep(checklist.length);
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "Could not complete delivery.");
     }
@@ -165,7 +270,23 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
           />
           {actionError ? <p className="rounded-md bg-clay/10 px-3 py-2 text-sm font-semibold text-clay">{actionError}</p> : null}
 
-          <ActivityChecklist hasActiveOrder={hasActiveOrder} activeStep={activeStep} onStepChange={setActiveStep} />
+          <ActivityChecklist
+            hasActiveOrder={hasActiveOrder}
+            activeStep={activeStep}
+            canFinalizeInvoice={activeOrder ? activeOrder.items.every((item) => boughtItemIds.includes(item.id)) : false}
+            onStepChange={setActiveStep}
+            onCompleteDelivery={() => {
+              if (activeOrder) void completeOrder(activeOrder.id);
+            }}
+            onStatusStep={(status, nextStep) => {
+              if (!activeOrder) return;
+              if (status === "ready_for_delivery") {
+                void finalizeBoughtItems(activeOrder, nextStep);
+                return;
+              }
+              void updateOrderStatus(activeOrder.id, status, nextStep);
+            }}
+          />
         </aside>
 
         <div className="grid gap-2">
@@ -174,6 +295,8 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
               order={activeOrder}
               activeStep={activeStep}
               onStepChange={setActiveStep}
+              onStatusStep={(status, nextStep) => updateOrderStatus(activeOrder.id, status, nextStep)}
+              onFinalizeInvoice={(nextStep) => finalizeBoughtItems(activeOrder, nextStep)}
               onComplete={() => completeOrder(activeOrder.id)}
               boughtItemIds={boughtItemIds}
               onToggleBought={toggleBoughtItem}
@@ -212,6 +335,18 @@ function buildStaffOrder(order: Order, staff: Profile): Order {
     assignedStaff: staff,
     status: order.status === "submitted" ? "assigned" : order.status
   };
+}
+
+function stepFromOrderStatus(status: OrderStatus) {
+  const stepsByStatus: Partial<Record<OrderStatus, number>> = {
+    assigned: 0,
+    confirmed: 1,
+    shopping: 3,
+    ready_for_delivery: 4,
+    delivered: checklist.length
+  };
+
+  return stepsByStatus[status] ?? 0;
 }
 
 function ProfileSummaryPopover({
@@ -335,11 +470,17 @@ function OpenOffers({
 function ActivityChecklist({
   hasActiveOrder,
   activeStep,
-  onStepChange
+  canFinalizeInvoice,
+  onStepChange,
+  onCompleteDelivery,
+  onStatusStep
 }: {
   hasActiveOrder: boolean;
   activeStep: number;
+  canFinalizeInvoice: boolean;
   onStepChange: (step: number) => void;
+  onCompleteDelivery: () => void;
+  onStatusStep: (status: OrderStatus, nextStep: number) => void;
 }) {
   return (
     <section className="rounded-md border border-ink/10 bg-white p-2.5 shadow-sm">
@@ -358,15 +499,29 @@ function ActivityChecklist({
             const isNext = index === activeStep;
             return (
               <button
-                key={activity}
+                key={activity.label}
                 type="button"
-                disabled={isDone}
+                disabled={isDone || !isNext || (activity.status === "ready_for_delivery" && !canFinalizeInvoice)}
+                title={activity.status === "ready_for_delivery" && !canFinalizeInvoice ? "Mark every product as bought first." : undefined}
                 onClick={() => {
-                  if (index >= activeStep) onStepChange(Math.min(index + 1, checklist.length));
+                  if (!isNext) return;
+                  if (activity.status === "ready_for_delivery" && !canFinalizeInvoice) return;
+                  const nextStep = Math.min(index + 1, checklist.length);
+                  if (activity.status === "delivered") {
+                    onCompleteDelivery();
+                    return;
+                  }
+                  if (activity.status) {
+                    onStatusStep(activity.status, nextStep);
+                    return;
+                  }
+                  onStepChange(nextStep);
                 }}
                 className={`focus-ring flex w-full items-center gap-2 rounded-md border p-2.5 text-left transition ${
                   isDone
                     ? "border-leaf/25 bg-mint"
+                    : activity.status === "ready_for_delivery" && !canFinalizeInvoice
+                      ? "border-ink/10 bg-white opacity-55"
                     : isNext
                       ? "border-market bg-market/20 shadow-soft"
                       : "border-ink/10 bg-white"
@@ -378,13 +533,18 @@ function ActivityChecklist({
                   {isDone ? <CheckCircle2 aria-hidden size={16} /> : index + 1}
                 </span>
                 <span className={isDone ? "font-semibold text-leaf" : isNext ? "font-semibold text-ink" : "text-ink/64"}>
-                  {activity}
+                  {activity.label}
                 </span>
               </button>
             );
           })
         )}
       </div>
+      {hasActiveOrder && !canFinalizeInvoice ? (
+        <p className="mt-2 rounded-md bg-market/15 px-2.5 py-2 text-xs font-semibold text-ink/62">
+          Mark every product as bought before final invoice / ready for delivery.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -393,6 +553,8 @@ function StaffOrderCard({
   order,
   activeStep,
   onStepChange,
+  onStatusStep,
+  onFinalizeInvoice,
   onComplete,
   boughtItemIds,
   onToggleBought
@@ -400,6 +562,8 @@ function StaffOrderCard({
   order: Order;
   activeStep: number;
   onStepChange: (step: number) => void;
+  onStatusStep: (status: OrderStatus, nextStep: number) => void;
+  onFinalizeInvoice: (nextStep: number) => void;
   onComplete: () => void;
   boughtItemIds: string[];
   onToggleBought: (itemId: string) => void;
@@ -408,6 +572,8 @@ function StaffOrderCard({
   const finalPayable = order.finalTotal ?? finalItemsTotal + order.serviceFee;
   const message = buildStaffOrderMessage(order);
   const whatsappUrl = buildWhatsAppFallbackUrl(order.customer.phone, message);
+  const allItemsBought = order.items.length > 0 && order.items.every((item) => boughtItemIds.includes(item.id));
+  const allItemsFinalized = areAllOrderItemsFinalized(order.items);
 
   return (
     <article className="flex h-full flex-col rounded-md border border-ink/10 bg-white shadow-soft">
@@ -529,8 +695,17 @@ function StaffOrderCard({
           <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
             <button
               type="button"
-              onClick={() => onStepChange(Math.max(activeStep, 4))}
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md border border-ink/15 px-3 py-2 text-sm font-semibold"
+              onClick={() => {
+                if (!allItemsBought) return;
+                if (order.status === "shopping") {
+                  onFinalizeInvoice(Math.max(activeStep, 4));
+                  return;
+                }
+                onStepChange(Math.max(activeStep, 4));
+              }}
+              disabled={!allItemsBought}
+              title={allItemsBought ? "Finalize invoice" : "Mark every product as bought first."}
+              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md border border-ink/15 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
             >
               <ReceiptText aria-hidden size={17} />
               Finalize invoice
@@ -538,7 +713,9 @@ function StaffOrderCard({
             <button
               type="button"
               onClick={onComplete}
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white"
+              disabled={!allItemsBought || !allItemsFinalized}
+              title={!allItemsBought ? "Mark every product as bought first." : !allItemsFinalized ? "Finalize the invoice before completing delivery." : "Complete delivery"}
+              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
             >
               <CheckCircle2 aria-hidden size={17} />
               Complete delivery

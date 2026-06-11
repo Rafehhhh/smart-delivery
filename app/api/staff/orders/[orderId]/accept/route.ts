@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
 import { fail, ok } from "@/lib/api";
-import { profiles } from "@/lib/demo-data";
+import { orders as demoOrders, profiles } from "@/lib/demo-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent, mapOrderRow } from "@/lib/supabase-orders";
-import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder, upsertTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 
 export async function POST(_: Request, { params }: { params: Promise<{ orderId: string }> }) {
@@ -22,7 +22,12 @@ export async function POST(_: Request, { params }: { params: Promise<{ orderId: 
     if (!user) {
       if (!isTestStaff) return fail("Sign in as approved staff before accepting orders.", 401);
       const staff = profiles.find((profile) => profile.role === "staff") ?? profiles[0];
-      const nextOrders = updateTestOrder(readTestOrdersFromCookies(cookieStore), orderId, (order) => ({
+      const storedOrders = readTestOrdersFromCookies(cookieStore);
+      const fallbackOrder = demoOrders.find((order) => order.id === orderId);
+      const baseOrders = fallbackOrder && !storedOrders.some((order) => order.id === orderId)
+        ? upsertTestOrder(storedOrders, fallbackOrder)
+        : storedOrders;
+      const nextOrders = updateTestOrder(baseOrders, orderId, (order) => ({
         ...order,
         assignedStaff: staff,
         status: "assigned"

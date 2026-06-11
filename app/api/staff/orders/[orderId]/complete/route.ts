@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
+import { areAllOrderItemsFinalized } from "@/lib/calculations";
 import { fail, ok } from "@/lib/api";
+import { orders as demoOrders } from "@/lib/demo-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent } from "@/lib/supabase-orders";
-import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder, upsertTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 
 export async function POST(_: Request, { params }: { params: Promise<{ orderId: string }> }) {
@@ -20,7 +22,16 @@ export async function POST(_: Request, { params }: { params: Promise<{ orderId: 
     const user = userResult.data.user;
     if (!user) {
       if (!isTestStaff) return fail("Sign in as staff before completing delivery.", 401);
-      const nextOrders = updateTestOrder(readTestOrdersFromCookies(cookieStore), orderId, (order) => ({
+      const storedOrders = readTestOrdersFromCookies(cookieStore);
+      const fallbackOrder = demoOrders.find((order) => order.id === orderId);
+      const baseOrders = fallbackOrder && !storedOrders.some((order) => order.id === orderId)
+        ? upsertTestOrder(storedOrders, fallbackOrder)
+        : storedOrders;
+      const currentOrder = baseOrders.find((order) => order.id === orderId);
+      if (!currentOrder || !areAllOrderItemsFinalized(currentOrder.items)) {
+        return fail("Mark every product as bought and finalize the invoice before completing delivery.", 409);
+      }
+      const nextOrders = updateTestOrder(baseOrders, orderId, (order) => ({
         ...order,
         status: "delivered",
         paymentState: "paid"
@@ -43,6 +54,25 @@ export async function POST(_: Request, { params }: { params: Promise<{ orderId: 
       .limit(1)
       .maybeSingle();
     if (cashResult.error) return fail("Could not verify cash settlement.", 500, cashResult.error.message);
+
+    const itemsResult = await supabase
+      .from("order_items")
+      .select("id, product_name, unit, requested_quantity, estimated_price, final_quantity, final_price")
+      .eq("order_id", orderId);
+    if (itemsResult.error) return fail("Could not verify bought products.", 500, itemsResult.error.message);
+    const items = (itemsResult.data ?? []).map((item) => ({
+      id: item.id,
+      productId: item.id,
+      productName: item.product_name,
+      unit: item.unit,
+      requestedQuantity: Number(item.requested_quantity),
+      estimatedPrice: Number(item.estimated_price),
+      finalQuantity: item.final_quantity === null ? undefined : Number(item.final_quantity),
+      finalPrice: item.final_price === null ? undefined : Number(item.final_price)
+    }));
+    if (!areAllOrderItemsFinalized(items)) {
+      return fail("Mark every product as bought and finalize the invoice before completing delivery.", 409);
+    }
 
     const balanceDue = Number(cashResult.data?.balance_due ?? 0);
     const refundDue = Number(cashResult.data?.refund_due ?? 0);

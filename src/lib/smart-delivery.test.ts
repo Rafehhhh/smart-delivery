@@ -3,6 +3,7 @@ import {
   calculateEstimate,
   calculateFinalItemsTotal,
   calculateServiceFee,
+  areAllOrderItemsFinalized,
   canTransitionOrder,
   derivePaymentState,
   isSlotAvailable,
@@ -146,6 +147,16 @@ describe("order totals", () => {
 
   it("uses final quantities and prices when available", () => {
     expect(calculateFinalItemsTotal(items)).toBe(640);
+  });
+
+  it("requires every order item to have final bought values before invoice finalization", () => {
+    expect(areAllOrderItemsFinalized(items)).toBe(false);
+    expect(
+      areAllOrderItemsFinalized([
+        { ...items[0], finalQuantity: 10, finalPrice: 55 },
+        { ...items[1], finalQuantity: 2.5, finalPrice: 36 }
+      ])
+    ).toBe(true);
   });
 
   it("applies flat service fee unless free minimum is reached", () => {

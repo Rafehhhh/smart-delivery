@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
-import { calculateFinalItemsTotal, calculateServiceFee, derivePaymentState, reconcileCash } from "@/lib/calculations";
+import { areAllOrderItemsFinalized, calculateFinalItemsTotal, calculateServiceFee, derivePaymentState, reconcileCash } from "@/lib/calculations";
 import { fail, finalizeItemsSchema, ok, parseJson } from "@/lib/api";
+import { orders as demoOrders } from "@/lib/demo-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent } from "@/lib/supabase-orders";
-import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder, upsertTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ orderId: string }> }) {
@@ -36,7 +37,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
       const finalTotal = calculateFinalItemsTotal(finalItems);
       const cash = reconcileCash(finalTotal, 0);
       const paymentState = derivePaymentState(cash, finalTotal);
-      const nextOrders = updateTestOrder(readTestOrdersFromCookies(cookieStore), orderId, (order) => ({
+      const storedOrders = readTestOrdersFromCookies(cookieStore);
+      const fallbackOrder = demoOrders.find((order) => order.id === orderId);
+      const baseOrders = fallbackOrder && !storedOrders.some((order) => order.id === orderId)
+        ? upsertTestOrder(storedOrders, fallbackOrder)
+        : storedOrders;
+      const nextOrders = updateTestOrder(baseOrders, orderId, (order) => ({
         ...order,
         items: order.items.map((item) => {
           const finalItem = finalItems.find((entry) => entry.id === item.id);
@@ -48,6 +54,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
         status: "ready_for_delivery",
         cash
       }));
+      const updatedOrder = nextOrders.find((order) => order.id === orderId);
+      if (!updatedOrder || !areAllOrderItemsFinalized(updatedOrder.items)) {
+        return fail("Mark every product as bought before finalizing the invoice.", 409);
+      }
       return setTestOrdersCookie(ok({
         orderId,
         items: finalItems,
@@ -102,6 +112,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
       finalQuantity: item.final_quantity === null ? undefined : Number(item.final_quantity),
       finalPrice: item.final_price === null ? undefined : Number(item.final_price)
     }));
+    if (!areAllOrderItemsFinalized(finalItems)) {
+      return fail("Mark every product as bought before finalizing the invoice.", 409);
+    }
     const itemsTotal = calculateFinalItemsTotal(finalItems);
     const serviceFee = calculateServiceFee(itemsTotal, {
       id: feeResult.data?.id ?? "default",

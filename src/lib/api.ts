@@ -52,6 +52,10 @@ export const updateOrderSchema = z.object({
   notes: z.string().optional()
 });
 
+export const staffStatusSchema = z.object({
+  status: z.enum(["confirmed", "shopping", "ready_for_delivery", "delivered"])
+});
+
 export const cashSchema = z.object({
   advanceCollected: z.number().min(0).default(0),
   finalCollected: z.number().min(0).default(0),
