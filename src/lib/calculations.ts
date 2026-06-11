@@ -28,6 +28,13 @@ export function calculateFinalItemsTotal(items: OrderItem[]) {
   );
 }
 
+export function areAllOrderItemsFinalized(items: OrderItem[]) {
+  return (
+    items.length > 0 &&
+    items.every((item) => typeof item.finalQuantity === "number" && item.finalQuantity > 0 && typeof item.finalPrice === "number" && item.finalPrice >= 0)
+  );
+}
+
 export function calculateServiceFee(subtotal: number, rule: ServiceFeeRule) {
   if (!rule.isActive) return 0;
   if (rule.freeDeliveryMinimum && subtotal >= rule.freeDeliveryMinimum) return 0;

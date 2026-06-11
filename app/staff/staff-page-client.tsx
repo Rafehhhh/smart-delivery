@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { StatusPill } from "@/components/status-pill";
-import { calculateFinalItemsTotal } from "@/lib/calculations";
+import { areAllOrderItemsFinalized, calculateFinalItemsTotal } from "@/lib/calculations";
 import { profiles } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
 import type { Order, OrderStatus, Profile } from "@/lib/types";
@@ -110,6 +110,14 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
   }
 
   async function updateOrderStatus(orderId: string, nextStatus: OrderStatus, nextStep: number) {
+    const targetOrder = orderList.find((order) => order.id === orderId);
+    const isTryingToFinalize = nextStatus === "ready_for_delivery";
+    const allItemsBought = targetOrder ? targetOrder.items.every((item) => boughtItemIds.includes(item.id)) : false;
+    if (isTryingToFinalize && !allItemsBought) {
+      setActionError("Mark every product as bought before finalizing the invoice or setting ready for delivery.");
+      return;
+    }
+
     setActionError("");
     try {
       const response = await fetch(`/api/staff/orders/${orderId}/status`, {
@@ -138,7 +146,64 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
     }
   }
 
+  async function finalizeBoughtItems(order: Order, nextStep: number) {
+    const allItemsBought = order.items.every((item) => boughtItemIds.includes(item.id));
+    if (!allItemsBought) {
+      setActionError("Mark every product as bought before finalizing the invoice or setting ready for delivery.");
+      return;
+    }
+
+    setActionError("");
+    try {
+      const response = await fetch(`/api/staff/orders/${order.id}/finalize-items`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: order.items.map((item) => ({
+            itemId: item.id,
+            finalQuantity: item.finalQuantity ?? item.requestedQuantity,
+            finalPrice: item.finalPrice ?? item.estimatedPrice
+          }))
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not finalize invoice.");
+
+      const finalizedItems = (payload.data?.items ?? []) as Order["items"];
+      setOrderList((current) =>
+        current.map((entry) =>
+          entry.id === order.id
+            ? {
+                ...entry,
+                items: entry.items.map((item) => {
+                  const finalizedItem = finalizedItems.find((finalItem) => finalItem.id === item.id);
+                  return finalizedItem
+                    ? { ...item, finalQuantity: finalizedItem.finalQuantity, finalPrice: finalizedItem.finalPrice }
+                    : item;
+                }),
+                finalTotal: payload.data?.finalTotal ?? entry.finalTotal,
+                serviceFee: payload.data?.serviceFee ?? entry.serviceFee,
+                paymentState: payload.data?.paymentState ?? entry.paymentState,
+                cash: payload.data?.cash ?? entry.cash,
+                status: "ready_for_delivery"
+              }
+            : entry
+        )
+      );
+      setActiveStep(nextStep);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Could not finalize invoice.");
+    }
+  }
+
   async function completeOrder(orderId: string) {
+    const targetOrder = orderList.find((order) => order.id === orderId);
+    const allItemsBought = targetOrder ? targetOrder.items.every((item) => boughtItemIds.includes(item.id)) : false;
+    if (!allItemsBought) {
+      setActionError("Mark every product as bought before completing delivery.");
+      return;
+    }
+
     setActionError("");
     try {
       const response = await fetch(`/api/staff/orders/${orderId}/complete`, { method: "POST" });
@@ -208,12 +273,18 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
           <ActivityChecklist
             hasActiveOrder={hasActiveOrder}
             activeStep={activeStep}
+            canFinalizeInvoice={activeOrder ? activeOrder.items.every((item) => boughtItemIds.includes(item.id)) : false}
             onStepChange={setActiveStep}
             onCompleteDelivery={() => {
               if (activeOrder) void completeOrder(activeOrder.id);
             }}
             onStatusStep={(status, nextStep) => {
-              if (activeOrder) void updateOrderStatus(activeOrder.id, status, nextStep);
+              if (!activeOrder) return;
+              if (status === "ready_for_delivery") {
+                void finalizeBoughtItems(activeOrder, nextStep);
+                return;
+              }
+              void updateOrderStatus(activeOrder.id, status, nextStep);
             }}
           />
         </aside>
@@ -225,6 +296,7 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
               activeStep={activeStep}
               onStepChange={setActiveStep}
               onStatusStep={(status, nextStep) => updateOrderStatus(activeOrder.id, status, nextStep)}
+              onFinalizeInvoice={(nextStep) => finalizeBoughtItems(activeOrder, nextStep)}
               onComplete={() => completeOrder(activeOrder.id)}
               boughtItemIds={boughtItemIds}
               onToggleBought={toggleBoughtItem}
@@ -398,12 +470,14 @@ function OpenOffers({
 function ActivityChecklist({
   hasActiveOrder,
   activeStep,
+  canFinalizeInvoice,
   onStepChange,
   onCompleteDelivery,
   onStatusStep
 }: {
   hasActiveOrder: boolean;
   activeStep: number;
+  canFinalizeInvoice: boolean;
   onStepChange: (step: number) => void;
   onCompleteDelivery: () => void;
   onStatusStep: (status: OrderStatus, nextStep: number) => void;
@@ -427,9 +501,11 @@ function ActivityChecklist({
               <button
                 key={activity.label}
                 type="button"
-                disabled={isDone || !isNext}
+                disabled={isDone || !isNext || (activity.status === "ready_for_delivery" && !canFinalizeInvoice)}
+                title={activity.status === "ready_for_delivery" && !canFinalizeInvoice ? "Mark every product as bought first." : undefined}
                 onClick={() => {
                   if (!isNext) return;
+                  if (activity.status === "ready_for_delivery" && !canFinalizeInvoice) return;
                   const nextStep = Math.min(index + 1, checklist.length);
                   if (activity.status === "delivered") {
                     onCompleteDelivery();
@@ -444,6 +520,8 @@ function ActivityChecklist({
                 className={`focus-ring flex w-full items-center gap-2 rounded-md border p-2.5 text-left transition ${
                   isDone
                     ? "border-leaf/25 bg-mint"
+                    : activity.status === "ready_for_delivery" && !canFinalizeInvoice
+                      ? "border-ink/10 bg-white opacity-55"
                     : isNext
                       ? "border-market bg-market/20 shadow-soft"
                       : "border-ink/10 bg-white"
@@ -462,6 +540,11 @@ function ActivityChecklist({
           })
         )}
       </div>
+      {hasActiveOrder && !canFinalizeInvoice ? (
+        <p className="mt-2 rounded-md bg-market/15 px-2.5 py-2 text-xs font-semibold text-ink/62">
+          Mark every product as bought before final invoice / ready for delivery.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -471,6 +554,7 @@ function StaffOrderCard({
   activeStep,
   onStepChange,
   onStatusStep,
+  onFinalizeInvoice,
   onComplete,
   boughtItemIds,
   onToggleBought
@@ -479,6 +563,7 @@ function StaffOrderCard({
   activeStep: number;
   onStepChange: (step: number) => void;
   onStatusStep: (status: OrderStatus, nextStep: number) => void;
+  onFinalizeInvoice: (nextStep: number) => void;
   onComplete: () => void;
   boughtItemIds: string[];
   onToggleBought: (itemId: string) => void;
@@ -487,6 +572,8 @@ function StaffOrderCard({
   const finalPayable = order.finalTotal ?? finalItemsTotal + order.serviceFee;
   const message = buildStaffOrderMessage(order);
   const whatsappUrl = buildWhatsAppFallbackUrl(order.customer.phone, message);
+  const allItemsBought = order.items.length > 0 && order.items.every((item) => boughtItemIds.includes(item.id));
+  const allItemsFinalized = areAllOrderItemsFinalized(order.items);
 
   return (
     <article className="flex h-full flex-col rounded-md border border-ink/10 bg-white shadow-soft">
@@ -609,13 +696,16 @@ function StaffOrderCard({
             <button
               type="button"
               onClick={() => {
+                if (!allItemsBought) return;
                 if (order.status === "shopping") {
-                  onStatusStep("ready_for_delivery", Math.max(activeStep, 4));
+                  onFinalizeInvoice(Math.max(activeStep, 4));
                   return;
                 }
                 onStepChange(Math.max(activeStep, 4));
               }}
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md border border-ink/15 px-3 py-2 text-sm font-semibold"
+              disabled={!allItemsBought}
+              title={allItemsBought ? "Finalize invoice" : "Mark every product as bought first."}
+              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md border border-ink/15 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
             >
               <ReceiptText aria-hidden size={17} />
               Finalize invoice
@@ -623,7 +713,9 @@ function StaffOrderCard({
             <button
               type="button"
               onClick={onComplete}
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white"
+              disabled={!allItemsBought || !allItemsFinalized}
+              title={!allItemsBought ? "Mark every product as bought first." : !allItemsFinalized ? "Finalize the invoice before completing delivery." : "Complete delivery"}
+              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
             >
               <CheckCircle2 aria-hidden size={17} />
               Complete delivery

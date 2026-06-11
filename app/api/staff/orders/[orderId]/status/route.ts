@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { canTransitionOrder } from "@/lib/calculations";
+import { areAllOrderItemsFinalized, canTransitionOrder } from "@/lib/calculations";
 import { fail, ok, parseJson, staffStatusSchema } from "@/lib/api";
 import { orders as demoOrders } from "@/lib/demo-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -63,6 +63,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
       if (!canTransitionOrder(currentOrder.status, nextStatus)) {
         return fail(`Cannot move order from ${currentOrder.status} to ${nextStatus}.`, 409);
       }
+      if (nextStatus === "ready_for_delivery" && !areAllOrderItemsFinalized(currentOrder.items)) {
+        return fail("Mark every product as bought before setting the order ready for delivery.", 409);
+      }
       const nextOrders = updateTestOrder(baseOrders, orderId, (order) => updateLocalOrderStatus(order, nextStatus));
       const updatedOrder = nextOrders.find((order) => order.id === orderId);
       return setTestOrdersCookie(ok({ order: updatedOrder }), nextOrders);
@@ -79,6 +82,27 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
     const currentStatus = orderResult.data.status as OrderStatus;
     if (!canTransitionOrder(currentStatus, nextStatus)) {
       return fail(`Cannot move order from ${currentStatus} to ${nextStatus}.`, 409);
+    }
+
+    if (nextStatus === "ready_for_delivery") {
+      const itemsResult = await supabase
+        .from("order_items")
+        .select("id, product_name, unit, requested_quantity, estimated_price, final_quantity, final_price")
+        .eq("order_id", orderId);
+      if (itemsResult.error) return fail("Could not verify bought products.", 500, itemsResult.error.message);
+      const items = (itemsResult.data ?? []).map((item) => ({
+        id: item.id,
+        productId: item.id,
+        productName: item.product_name,
+        unit: item.unit,
+        requestedQuantity: Number(item.requested_quantity),
+        estimatedPrice: Number(item.estimated_price),
+        finalQuantity: item.final_quantity === null ? undefined : Number(item.final_quantity),
+        finalPrice: item.final_price === null ? undefined : Number(item.final_price)
+      }));
+      if (!areAllOrderItemsFinalized(items)) {
+        return fail("Mark every product as bought before setting the order ready for delivery.", 409);
+      }
     }
 
     const updatePayload: { status: OrderStatus; payment_state?: "paid"; updated_at: string } = {
