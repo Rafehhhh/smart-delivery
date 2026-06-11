@@ -1,16 +1,22 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { StatusPill } from "@/components/status-pill";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 import { getOrderTotal } from "@/lib/admin-metrics";
-import { getOrdersData } from "@/lib/supabase-orders";
+import { buildOrderProgressEvents, formatOrderEventTitle } from "@/lib/order-progress";
+import { getOrderEventsForOrders, getOrdersData, getWhatsAppMessagesForOrders } from "@/lib/supabase-orders";
 import { AdminHomeHeader } from "../admin-header";
-import { ArrowLeft, Eye, MapPin, ReceiptText } from "lucide-react";
+import { ArrowLeft, BellRing, MapPin, MessageCircle, ReceiptText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage() {
   const { orders } = await getOrdersData();
+  const orderIds = orders.map((order) => order.id);
+  const [eventsByOrderId, messagesByOrderId] = await Promise.all([
+    getOrderEventsForOrders(orderIds),
+    getWhatsAppMessagesForOrders(orderIds)
+  ]);
 
   return (
     <AppShell hideNav headerContent={<AdminHomeHeader />}>
@@ -73,6 +79,54 @@ export default async function AdminOrdersPage() {
                 <div className="mt-3 flex justify-between rounded-md bg-ink p-3 text-sm font-semibold text-white">
                   <span>Total</span>
                   <span>{formatCurrency(getOrderTotal(order))}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-md border border-ink/10 p-3">
+                <h3 className="flex items-center gap-2 font-semibold">
+                  <BellRing aria-hidden size={18} />
+                  Order timeline
+                </h3>
+                <div className="mt-3 space-y-2">
+                  {buildOrderProgressEvents(order, eventsByOrderId[order.id]).map((event) => (
+                    <div key={event.id} className="rounded-md bg-limewash p-2 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong>{formatOrderEventTitle(event.eventType)}</strong>
+                        <span className="text-xs text-ink/52">{formatDateTime(event.createdAt)}</span>
+                      </div>
+                      <p className="mt-1 text-ink/62">{event.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-ink/10 p-3">
+                <h3 className="flex items-center gap-2 font-semibold">
+                  <MessageCircle aria-hidden size={18} />
+                  WhatsApp update log
+                </h3>
+                <div className="mt-3 space-y-2">
+                  {(messagesByOrderId[order.id] ?? []).slice(0, 4).map((message) => (
+                    <div key={message.id} className="rounded-md bg-limewash p-2 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="capitalize">{message.eventType?.replaceAll("_", " ") ?? "message"}</strong>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-leaf">{message.status}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-ink/58">
+                        {message.recipientRole ?? "recipient"} - {message.recipientPhone}
+                      </p>
+                      {message.fallbackUrl ? (
+                        <a href={message.fallbackUrl} className="mt-1 inline-flex text-xs font-semibold text-leaf hover:text-ink">
+                          Open WhatsApp fallback
+                        </a>
+                      ) : null}
+                    </div>
+                  ))}
+                  {(messagesByOrderId[order.id] ?? []).length === 0 ? (
+                    <p className="rounded-md bg-limewash p-2 text-sm text-ink/58">No WhatsApp update log yet.</p>
+                  ) : null}
                 </div>
               </div>
             </div>

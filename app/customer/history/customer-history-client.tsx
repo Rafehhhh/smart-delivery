@@ -4,12 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import type { Order } from "@/lib/types";
-import { ArrowLeft, ShoppingBag, Star } from "lucide-react";
+import { buildOrderProgressEvents, formatOrderEventTitle } from "@/lib/order-progress";
+import type { Order, OrderEvent } from "@/lib/types";
+import { ArrowLeft, CheckCircle2, ShoppingBag, Star } from "lucide-react";
 
 type ReviewType = "staff" | "order";
 
-export function CustomerHistoryClient({ initialOrders }: { initialOrders: Order[] }) {
+export function CustomerHistoryClient({
+  initialOrders,
+  eventsByOrderId
+}: {
+  initialOrders: Order[];
+  eventsByOrderId: Record<string, OrderEvent[]>;
+}) {
   const [activeReviewOrderId, setActiveReviewOrderId] = useState<string | null>(null);
   const [submittedReviews, setSubmittedReviews] = useState<Record<string, boolean>>({});
   const [rating, setRating] = useState(5);
@@ -112,6 +119,24 @@ export function CustomerHistoryClient({ initialOrders }: { initialOrders: Order[
                             {item.productName} x {item.requestedQuantity} {item.unit}
                           </span>
                           <strong>{formatCurrency((item.finalPrice ?? item.estimatedPrice) * (item.finalQuantity ?? item.requestedQuantity))}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-xl bg-white p-2.5">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-leaf">
+                      <CheckCircle2 aria-hidden size={14} />
+                      Order timeline
+                    </p>
+                    <div className="mt-2 grid gap-1.5">
+                      {buildOrderProgressEvents(order, eventsByOrderId[order.id]).map((event) => (
+                        <div key={event.id} className="rounded-lg bg-limewash px-2.5 py-2 text-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <strong>{formatOrderEventTitle(event.eventType)}</strong>
+                            <span className="text-xs text-ink/52">{formatDateTime(event.createdAt)}</span>
+                          </div>
+                          <p className="mt-1 text-ink/62">{event.message}</p>
                         </div>
                       ))}
                     </div>

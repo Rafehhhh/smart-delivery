@@ -78,6 +78,17 @@ export type OrdersData = {
   source: "supabase" | "demo";
 };
 
+export type WhatsAppMessageLog = {
+  id: string;
+  orderId: string;
+  recipientRole?: string;
+  recipientPhone: string;
+  eventType?: string;
+  status: string;
+  fallbackUrl?: string;
+  createdAt: string;
+};
+
 function toNumber(value: number | string | null | undefined, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
   const parsed = Number(value);
@@ -206,6 +217,10 @@ export async function getOrdersData(): Promise<OrdersData> {
   }
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export async function createOrderEvent(input: {
   orderId: string;
   actorId?: string | null;
@@ -245,6 +260,71 @@ export async function getOrderEvents(orderId: string): Promise<OrderEvent[]> {
     }));
   } catch {
     return [];
+  }
+}
+
+export async function getOrderEventsForOrders(orderIds: string[]): Promise<Record<string, OrderEvent[]>> {
+  const databaseOrderIds = orderIds.filter(isUuid);
+  if (databaseOrderIds.length === 0) return {};
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const result = await supabase
+      .from("order_events")
+      .select("id, order_id, actor_id, event_type, message, metadata, created_at")
+      .in("order_id", databaseOrderIds)
+      .order("created_at", { ascending: true });
+
+    if (result.error) return {};
+
+    return (result.data ?? []).reduce<Record<string, OrderEvent[]>>((eventsByOrder, row) => {
+      const event: OrderEvent = {
+        id: row.id,
+        orderId: row.order_id,
+        actorId: row.actor_id ?? undefined,
+        eventType: row.event_type,
+        message: row.message,
+        metadata: row.metadata ?? {},
+        createdAt: row.created_at
+      };
+      eventsByOrder[event.orderId] = [...(eventsByOrder[event.orderId] ?? []), event];
+      return eventsByOrder;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+export async function getWhatsAppMessagesForOrders(orderIds: string[]): Promise<Record<string, WhatsAppMessageLog[]>> {
+  const databaseOrderIds = orderIds.filter(isUuid);
+  if (databaseOrderIds.length === 0) return {};
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const result = await supabase
+      .from("whatsapp_messages")
+      .select("id, order_id, recipient_phone, recipient_role, event_type, status, fallback_url, created_at")
+      .in("order_id", databaseOrderIds)
+      .order("created_at", { ascending: false });
+
+    if (result.error) return {};
+
+    return (result.data ?? []).reduce<Record<string, WhatsAppMessageLog[]>>((messagesByOrder, row) => {
+      const message: WhatsAppMessageLog = {
+        id: row.id,
+        orderId: row.order_id,
+        recipientPhone: row.recipient_phone,
+        recipientRole: row.recipient_role ?? undefined,
+        eventType: row.event_type ?? undefined,
+        status: row.status,
+        fallbackUrl: row.fallback_url ?? undefined,
+        createdAt: row.created_at
+      };
+      messagesByOrder[message.orderId] = [...(messagesByOrder[message.orderId] ?? []), message];
+      return messagesByOrder;
+    }, {});
+  } catch {
+    return {};
   }
 }
 

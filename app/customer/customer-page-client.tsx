@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { calculateEstimate, calculateServiceFee, isSlotSelectable, remainingSlotCapacity } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
+import { formatOrderEventTitle, formatOrderStatus, getOrderProgressIndex, orderProgressSteps } from "@/lib/order-progress";
 import type { CatalogData } from "@/lib/supabase-catalog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { DeliverySlot, Order, OrderItem, Product, ProductCategory } from "@/lib/types";
@@ -223,6 +224,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isAddressEditorOpen, setIsAddressEditorOpen] = useState(false);
   const [orderUpdateIndex, setOrderUpdateIndex] = useState<number | null>(null);
+  const [liveOrderUpdate, setLiveOrderUpdate] = useState<DemoOrderUpdate | null>(null);
   const [openNoteIds, setOpenNoteIds] = useState<Record<string, boolean>>({});
   const [isNoteReminderOpen, setIsNoteReminderOpen] = useState(false);
   const [hasAcknowledgedNoteReminder, setHasAcknowledgedNoteReminder] = useState(false);
@@ -313,7 +315,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
   const latestOrder = [...customerOrders].sort(
     (first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
   )[0];
-  const activeOrderUpdate = orderUpdateIndex === null ? null : demoOrderUpdates[orderUpdateIndex];
+  const activeOrderUpdate = liveOrderUpdate ?? (orderUpdateIndex === null ? null : demoOrderUpdates[orderUpdateIndex]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
@@ -364,6 +366,12 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
   }, [orderUpdateIndex]);
 
   useEffect(() => {
+    if (!liveOrderUpdate) return;
+    const timeout = window.setTimeout(() => setLiveOrderUpdate(null), 4200);
+    return () => window.clearTimeout(timeout);
+  }, [liveOrderUpdate]);
+
+  useEffect(() => {
     if (!customerOrders.length) return;
     let supabase: ReturnType<typeof createSupabaseBrowserClient>;
     try {
@@ -379,12 +387,18 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "order_events" },
         (payload) => {
-          const event = payload.new as { order_id?: string; event_type?: string; message?: string };
+          const event = payload.new as { order_id?: string; event_type?: string; message?: string; metadata?: { status?: string } };
           if (!event.order_id || !orderIds.has(event.order_id)) return;
+          setCustomerOrders((current) =>
+            event.metadata?.status
+              ? current.map((order) => (order.id === event.order_id ? { ...order, status: event.metadata?.status as Order["status"] } : order))
+              : current
+          );
           setOrderUpdateIndex(null);
-          window.setTimeout(() => {
-            setOrderUpdateIndex(0);
-          }, 0);
+          setLiveOrderUpdate({
+            title: formatOrderEventTitle(event.event_type ?? "order_update"),
+            message: event.message ?? "Your order status has been updated."
+          });
         }
       )
       .subscribe();
@@ -1328,6 +1342,8 @@ function FilterOption({ children, selected, onClick }: { children: ReactNode; se
 }
 
 function LatestDeliveryCard({ order, totalOrders }: { order?: Order; totalOrders: number }) {
+  const progressIndex = order ? getOrderProgressIndex(order.status) : 0;
+
   return (
     <section id="delivery-history" className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
       <div className="flex items-center justify-between gap-2">
@@ -1342,9 +1358,19 @@ function LatestDeliveryCard({ order, totalOrders }: { order?: Order; totalOrders
               <p className="mt-0.5 text-xs text-ink/58">{order.slot.label}</p>
             </div>
             <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold capitalize text-leaf">
-              {order.status.replaceAll("_", " ")}
+              {formatOrderStatus(order.status)}
             </span>
           </div>
+          <div className="mt-2 grid grid-cols-6 gap-1">
+            {orderProgressSteps.map((step, index) => (
+              <span
+                key={step.status}
+                title={step.label}
+                className={index <= progressIndex ? "h-1.5 rounded-full bg-leaf" : "h-1.5 rounded-full bg-white"}
+              />
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs font-semibold text-leaf">{orderProgressSteps[progressIndex]?.message}</p>
           <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
             <div>
               <span className="text-ink/52">Items</span>
