@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { canTransitionOrder } from "@/lib/calculations";
 import { fail, ok, parseJson, staffStatusSchema } from "@/lib/api";
+import { orders as demoOrders } from "@/lib/demo-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent } from "@/lib/supabase-orders";
-import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder, upsertTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 import type { Order, OrderStatus } from "@/lib/types";
 
@@ -53,12 +54,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
     if (!user) {
       if (!isTestStaff) return fail("Sign in as staff before updating order status.", 401);
       const orders = readTestOrdersFromCookies(cookieStore);
-      const currentOrder = orders.find((order) => order.id === orderId);
+      const fallbackOrder = demoOrders.find((order) => order.id === orderId);
+      const baseOrders = fallbackOrder && !orders.some((order) => order.id === orderId)
+        ? upsertTestOrder(orders, fallbackOrder)
+        : orders;
+      const currentOrder = baseOrders.find((order) => order.id === orderId);
       if (!currentOrder) return fail("Order not found.", 404);
       if (!canTransitionOrder(currentOrder.status, nextStatus)) {
         return fail(`Cannot move order from ${currentOrder.status} to ${nextStatus}.`, 409);
       }
-      const nextOrders = updateTestOrder(orders, orderId, (order) => updateLocalOrderStatus(order, nextStatus));
+      const nextOrders = updateTestOrder(baseOrders, orderId, (order) => updateLocalOrderStatus(order, nextStatus));
       const updatedOrder = nextOrders.find((order) => order.id === orderId);
       return setTestOrdersCookie(ok({ order: updatedOrder }), nextOrders);
     }

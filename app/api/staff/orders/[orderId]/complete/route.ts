@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { fail, ok } from "@/lib/api";
+import { orders as demoOrders } from "@/lib/demo-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent } from "@/lib/supabase-orders";
-import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder, upsertTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 
 export async function POST(_: Request, { params }: { params: Promise<{ orderId: string }> }) {
@@ -20,7 +21,12 @@ export async function POST(_: Request, { params }: { params: Promise<{ orderId: 
     const user = userResult.data.user;
     if (!user) {
       if (!isTestStaff) return fail("Sign in as staff before completing delivery.", 401);
-      const nextOrders = updateTestOrder(readTestOrdersFromCookies(cookieStore), orderId, (order) => ({
+      const storedOrders = readTestOrdersFromCookies(cookieStore);
+      const fallbackOrder = demoOrders.find((order) => order.id === orderId);
+      const baseOrders = fallbackOrder && !storedOrders.some((order) => order.id === orderId)
+        ? upsertTestOrder(storedOrders, fallbackOrder)
+        : storedOrders;
+      const nextOrders = updateTestOrder(baseOrders, orderId, (order) => ({
         ...order,
         status: "delivered",
         paymentState: "paid"
