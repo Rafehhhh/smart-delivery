@@ -3,14 +3,18 @@ import { calculateEstimate, calculateServiceFee, isSlotAvailable, reconcileCash 
 import { addresses, products as demoProducts, serviceFeeRule as demoServiceFeeRule, slots as demoSlots, profiles } from "@/lib/demo-data";
 import { createOrderSchema, fail, ok, parseJson } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readTestOrdersFromCookies, setTestOrdersCookie, upsertTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
-import type { OrderItem } from "@/lib/types";
+import type { Order, OrderItem } from "@/lib/types";
 
 function baseSlotId(slotId: string) {
   return slotId.replace(/-\d+$/, "");
 }
 
-async function createDemoOrderResponse(parsed: Awaited<ReturnType<typeof parseJson<typeof createOrderSchema["_type"]>>>) {
+async function createDemoOrderResponse(
+  parsed: Awaited<ReturnType<typeof parseJson<typeof createOrderSchema["_type"]>>>,
+  cookieStore?: Awaited<ReturnType<typeof cookies>>
+) {
   if (!parsed.success) return fail("Invalid order payload.", 422, parsed.error.flatten());
 
   const customer = profiles.find((profile) => profile.id === (parsed.data.customerId ?? "customer-1") && profile.role === "customer") ?? profiles[0];
@@ -35,9 +39,8 @@ async function createDemoOrderResponse(parsed: Awaited<ReturnType<typeof parseJs
   const estimateTotal = calculateEstimate(items);
   const serviceFee = calculateServiceFee(estimateTotal, demoServiceFeeRule);
 
-  return ok(
-    {
-      id: `order_${Date.now()}`,
+  const order: Order = {
+      id: `test-order-${Date.now()}`,
       orderNumber: `SD-${Math.floor(1000 + Math.random() * 9000)}`,
       customer,
       address,
@@ -50,9 +53,14 @@ async function createDemoOrderResponse(parsed: Awaited<ReturnType<typeof parseJs
       cash: reconcileCash(0, 0),
       createdAt: new Date().toISOString(),
       notes: parsed.data.notes
-    },
-    { status: 201 }
-  );
+  };
+  const response = ok(order, { status: 201 });
+
+  if (cookieStore) {
+    setTestOrdersCookie(response, upsertTestOrder(readTestOrdersFromCookies(cookieStore), order));
+  }
+
+  return response;
 }
 
 export async function POST(request: Request) {
@@ -69,7 +77,7 @@ export async function POST(request: Request) {
     const userResult = await supabase.auth.getUser();
     const user = userResult.data.user;
     if (!user) {
-      return isTestCustomer ? createDemoOrderResponse(parsed) : fail("Sign in before creating an order.", 401);
+      return isTestCustomer ? createDemoOrderResponse(parsed, cookieStore) : fail("Sign in before creating an order.", 401);
     }
 
     const profileResult = await supabase
@@ -242,7 +250,7 @@ export async function POST(request: Request) {
     );
   } catch (caught) {
     if (process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true") {
-      return createDemoOrderResponse(parsed);
+      return createDemoOrderResponse(parsed, await cookies());
     }
     return fail(caught instanceof Error ? caught.message : "Could not create order.", 500);
   }

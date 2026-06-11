@@ -3,6 +3,7 @@ import { derivePaymentState, reconcileCash } from "@/lib/calculations";
 import { cashSchema, fail, ok, parseJson } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent } from "@/lib/supabase-orders";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
 
 export async function POST(request: Request, { params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await params;
@@ -25,7 +26,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
     const userResult = await supabase.auth.getUser();
     const user = userResult.data.user;
     if (!user) {
-      return isTestStaff ? ok({ orderId, cash, paymentState }) : fail("Sign in as staff before recording cash.", 401);
+      if (!isTestStaff) return fail("Sign in as staff before recording cash.", 401);
+      const nextOrders = updateTestOrder(readTestOrdersFromCookies(cookieStore), orderId, (order) => ({
+        ...order,
+        cash,
+        paymentState
+      }));
+      return setTestOrdersCookie(ok({ orderId, cash, paymentState }), nextOrders);
     }
 
     const cashResult = await supabase.from("cash_transactions").insert({

@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "./supabase/server";
 import { addresses as demoAddresses, orders as demoOrders, profiles as demoProfiles } from "./demo-data";
 import { calculateEstimate, calculateFinalItemsTotal, calculateServiceFee, derivePaymentState, reconcileCash } from "./calculations";
+import { readTestOrdersFromCookies } from "./test-order-store";
 import type { CashSummary, CustomerAddress, DeliverySlot, Order, OrderEvent, OrderItem, OrderStatus, PaymentState, Profile, ServiceFeeRule } from "./types";
 
 type OrderRow = {
@@ -162,6 +164,8 @@ export function mapOrderRow(row: OrderRow): Order {
 }
 
 export async function getOrdersData(): Promise<OrdersData> {
+  const testOrders = readTestOrdersFromCookies(await cookies());
+
   try {
     const supabase = await createSupabaseServerClient();
     const result = await supabase
@@ -190,15 +194,15 @@ export async function getOrdersData(): Promise<OrdersData> {
       .order("created_at", { ascending: false });
 
     if (result.error || !result.data?.length) {
-      return { orders: demoOrders, source: "demo" };
+      return { orders: [...testOrders, ...demoOrders], source: testOrders.length ? "supabase" : "demo" };
     }
 
     return {
-      orders: (result.data as unknown as OrderRow[]).map(mapOrderRow),
+      orders: [...testOrders, ...(result.data as unknown as OrderRow[]).map(mapOrderRow)],
       source: "supabase"
     };
   } catch {
-    return { orders: demoOrders, source: "demo" };
+    return { orders: [...testOrders, ...demoOrders], source: testOrders.length ? "supabase" : "demo" };
   }
 }
 

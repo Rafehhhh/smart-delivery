@@ -3,6 +3,7 @@ import { calculateFinalItemsTotal, calculateServiceFee, derivePaymentState, reco
 import { fail, finalizeItemsSchema, ok, parseJson } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent } from "@/lib/supabase-orders";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ orderId: string }> }) {
@@ -34,14 +35,27 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
       }));
       const finalTotal = calculateFinalItemsTotal(finalItems);
       const cash = reconcileCash(finalTotal, 0);
-      return ok({
+      const paymentState = derivePaymentState(cash, finalTotal);
+      const nextOrders = updateTestOrder(readTestOrdersFromCookies(cookieStore), orderId, (order) => ({
+        ...order,
+        items: order.items.map((item) => {
+          const finalItem = finalItems.find((entry) => entry.id === item.id);
+          return finalItem ? { ...item, finalQuantity: finalItem.finalQuantity, finalPrice: finalItem.finalPrice } : item;
+        }),
+        finalTotal,
+        serviceFee: 0,
+        paymentState,
+        status: "ready_for_delivery",
+        cash
+      }));
+      return setTestOrdersCookie(ok({
         orderId,
         items: finalItems,
         finalTotal,
         serviceFee: 0,
-        paymentState: derivePaymentState(cash, finalTotal),
+        paymentState,
         cash
-      });
+      }), nextOrders);
     }
 
     for (const item of parsed.data.items) {

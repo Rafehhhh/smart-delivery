@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { fail, ok } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent } from "@/lib/supabase-orders";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 
 export async function POST(_: Request, { params }: { params: Promise<{ orderId: string }> }) {
@@ -18,15 +19,20 @@ export async function POST(_: Request, { params }: { params: Promise<{ orderId: 
     const userResult = await supabase.auth.getUser();
     const user = userResult.data.user;
     if (!user) {
-      return isTestStaff
-        ? ok({
-            orderId,
-            orderNumber: orderId,
-            status: "delivered",
-            paymentState: "paid",
-            completedAt: new Date().toISOString()
-          })
-        : fail("Sign in as staff before completing delivery.", 401);
+      if (!isTestStaff) return fail("Sign in as staff before completing delivery.", 401);
+      const nextOrders = updateTestOrder(readTestOrdersFromCookies(cookieStore), orderId, (order) => ({
+        ...order,
+        status: "delivered",
+        paymentState: "paid"
+      }));
+      const response = ok({
+        orderId,
+        orderNumber: nextOrders.find((order) => order.id === orderId)?.orderNumber ?? orderId,
+        status: "delivered",
+        paymentState: "paid",
+        completedAt: new Date().toISOString()
+      });
+      return setTestOrdersCookie(response, nextOrders);
     }
 
     const cashResult = await supabase

@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { fail, ok } from "@/lib/api";
+import { profiles } from "@/lib/demo-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOrderEvent, mapOrderRow } from "@/lib/supabase-orders";
+import { readTestOrdersFromCookies, setTestOrdersCookie, updateTestOrder } from "@/lib/test-order-store";
 import { buildWhatsAppFallbackUrl } from "@/lib/whatsapp";
 
 export async function POST(_: Request, { params }: { params: Promise<{ orderId: string }> }) {
@@ -18,9 +20,19 @@ export async function POST(_: Request, { params }: { params: Promise<{ orderId: 
     const userResult = await supabase.auth.getUser();
     const user = userResult.data.user;
     if (!user) {
-      return isTestStaff
-        ? ok({ orderId, status: "assigned", assignment: { orderId, assignedAt: new Date().toISOString() } })
-        : fail("Sign in as approved staff before accepting orders.", 401);
+      if (!isTestStaff) return fail("Sign in as approved staff before accepting orders.", 401);
+      const staff = profiles.find((profile) => profile.role === "staff") ?? profiles[0];
+      const nextOrders = updateTestOrder(readTestOrdersFromCookies(cookieStore), orderId, (order) => ({
+        ...order,
+        assignedStaff: staff,
+        status: "assigned"
+      }));
+      const updatedOrder = nextOrders.find((order) => order.id === orderId);
+      const response = ok({
+        order: updatedOrder,
+        assignment: { orderId, staffId: staff.id, assignedAt: new Date().toISOString() }
+      });
+      return setTestOrdersCookie(response, nextOrders);
     }
 
     const activeResult = await supabase
