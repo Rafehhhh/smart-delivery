@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { calculateFinalItemsTotal, calculateServiceFee, derivePaymentState, reconcileCash } from "@/lib/calculations";
 import { fail, finalizeItemsSchema, ok, parseJson } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -10,10 +11,38 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
   if (!parsed.success) return fail("Invalid finalization payload.", 422, parsed.error.flatten());
 
   try {
+    const cookieStore = await cookies();
+    const isTestStaff =
+      process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true" &&
+      cookieStore.get("smart_delivery_test_role")?.value === "staff" &&
+      cookieStore.get("smart_delivery_test_staff_status")?.value !== "pending";
+
     const supabase = await createSupabaseServerClient();
     const userResult = await supabase.auth.getUser();
     const user = userResult.data.user;
-    if (!user) return fail("Sign in as staff before finalizing items.", 401);
+    if (!user) {
+      if (!isTestStaff) return fail("Sign in as staff before finalizing items.", 401);
+      const finalItems = parsed.data.items.map((item) => ({
+        id: item.itemId,
+        productId: item.itemId,
+        productName: item.itemId,
+        unit: "item",
+        requestedQuantity: item.finalQuantity,
+        estimatedPrice: item.finalPrice,
+        finalQuantity: item.finalQuantity,
+        finalPrice: item.finalPrice
+      }));
+      const finalTotal = calculateFinalItemsTotal(finalItems);
+      const cash = reconcileCash(finalTotal, 0);
+      return ok({
+        orderId,
+        items: finalItems,
+        finalTotal,
+        serviceFee: 0,
+        paymentState: derivePaymentState(cash, finalTotal),
+        cash
+      });
+    }
 
     for (const item of parsed.data.items) {
       const itemResult = await supabase
