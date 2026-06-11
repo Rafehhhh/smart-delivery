@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { StatusPill } from "@/components/status-pill";
-import { orders } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
 import { getOrderTotal } from "@/lib/admin-metrics";
+import { getOrdersData } from "@/lib/supabase-orders";
 import { AdminHomeHeader } from "../admin-header";
 import { ArrowLeft, Eye, MapPin, ReceiptText } from "lucide-react";
 
-export default function AdminOrdersPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminOrdersPage() {
+  const { orders } = await getOrdersData();
+
   return (
     <AppShell hideNav headerContent={<AdminHomeHeader />}>
       <section className="border-b border-ink/10 bg-white">

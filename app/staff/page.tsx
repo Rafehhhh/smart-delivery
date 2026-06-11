@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { StaffPageClient } from "./staff-page-client";
+import { getOrdersData } from "@/lib/supabase-orders";
 
 export default async function StaffPage() {
   if (process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true") {
@@ -14,5 +15,6 @@ export default async function StaffPage() {
     }
   }
 
-  return <StaffPageClient />;
+  const ordersData = await getOrdersData();
+  return <StaffPageClient initialOrders={ordersData.orders} />;
 }

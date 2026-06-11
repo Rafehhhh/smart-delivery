@@ -4,9 +4,9 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { calculateEstimate, calculateServiceFee, isSlotSelectable, remainingSlotCapacity } from "@/lib/calculations";
-import { orders } from "@/lib/demo-data";
 import { formatCurrency } from "@/lib/format";
 import type { CatalogData } from "@/lib/supabase-catalog";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { DeliverySlot, Order, OrderItem, Product, ProductCategory } from "@/lib/types";
 import {
   CalendarClock,
@@ -188,17 +188,21 @@ const manglishProductAliases: Record<string, string[]> = {
 
 type CustomerPageClientProps = {
   initialCatalog: CatalogData;
+  initialOrders: Order[];
 };
 
-export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) {
+export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPageClientProps) {
   const { categories, products, serviceFeeRule, slots } = initialCatalog;
-  const customer = orders.find((order) => order.customer.id === "customer-1")?.customer ?? {
+  const [customerOrders, setCustomerOrders] = useState(initialOrders);
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const customer = customerOrders.find((order) => order.customer.id === "customer-1")?.customer ?? {
     id: "customer-1",
     role: "customer" as const,
     name: "Fathima N.",
     phone: "+919876543210"
   };
-  const customerAddress = orders.find((order) => order.customer.id === "customer-1")?.address ?? {
+  const customerAddress = customerOrders.find((order) => order.customer.id === "customer-1")?.address ?? {
     id: "addr-1",
     customerId: "customer-1",
     houseName: "Green Villa",
@@ -305,7 +309,6 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
   const serviceFee = calculateServiceFee(subtotal, serviceFeeRule);
   const payable = subtotal + serviceFee;
   const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId);
-  const customerOrders = orders.filter((order) => order.customer.id === "customer-1");
   const isCartVisible = cartItems.length > 0;
   const latestOrder = [...customerOrders].sort(
     (first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
@@ -359,6 +362,37 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
 
     return () => window.clearTimeout(timeout);
   }, [orderUpdateIndex]);
+
+  useEffect(() => {
+    if (!customerOrders.length) return;
+    let supabase: ReturnType<typeof createSupabaseBrowserClient>;
+    try {
+      supabase = createSupabaseBrowserClient();
+    } catch {
+      return;
+    }
+
+    const orderIds = new Set(customerOrders.map((order) => order.id));
+    const channel = supabase
+      .channel("customer-order-events")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "order_events" },
+        (payload) => {
+          const event = payload.new as { order_id?: string; event_type?: string; message?: string };
+          if (!event.order_id || !orderIds.has(event.order_id)) return;
+          setOrderUpdateIndex(null);
+          window.setTimeout(() => {
+            setOrderUpdateIndex(0);
+          }, 0);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [customerOrders]);
 
   function getDraftQuantity(productId: string) {
     return draftQuantities[productId] ?? 1;
@@ -472,19 +506,66 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
     setProfileDraft((current) => ({ ...current, [field]: value }));
   }
 
-  function submitDemoOrder() {
+  async function submitDemoOrder(skipNoteReminder = false) {
     if (!selectedSlot || cartItems.length === 0) return;
-    if (!hasAcknowledgedNoteReminder && cartItems.some((item) => !item.notes?.trim())) {
+    if (!skipNoteReminder && !hasAcknowledgedNoteReminder && cartItems.some((item) => !item.notes?.trim())) {
       setIsNoteReminderOpen(true);
       return;
+    }
+    setSubmitError("");
+    setIsSubmittingOrder(true);
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: customer.id,
+          addressId: customerAddress.id,
+          slotId: selectedSlot.id,
+          slotDateOffset: selectedSlotDateOffset,
+          items: cartItems.map((item) => ({
+            productId: item.productId.startsWith("custom-") ? null : item.productId,
+            productName: item.productName,
+            unit: item.unit,
+            requestedQuantity: item.requestedQuantity,
+            estimatedPrice: item.estimatedPrice,
+            notes: item.notes
+          }))
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not submit order.");
+      const createdOrder = payload.data as Partial<Order>;
+      setCustomerOrders((current) => [
+        {
+          id: createdOrder.id ?? `order-${Date.now()}`,
+          orderNumber: createdOrder.orderNumber ?? "Submitted",
+          customer,
+          address: customerAddress,
+          slot: selectedSlot,
+          status: "submitted",
+          paymentState: "unpaid",
+          serviceFee,
+          estimateTotal: subtotal,
+          items: cartItems,
+          cash: { advanceCollected: 0, finalCollected: 0, balanceDue: payable, refundDue: 0, reconciliationStatus: "not_started" },
+          createdAt: createdOrder.createdAt ?? new Date().toISOString()
+        },
+        ...current
+      ]);
+      setCart([]);
+    } catch (caught) {
+      setSubmitError(caught instanceof Error ? caught.message : "Could not submit order.");
+    } finally {
+      setIsSubmittingOrder(false);
     }
     setOrderUpdateIndex(0);
   }
 
-  function continueSubmitFromReminder() {
+  async function continueSubmitFromReminder() {
     setHasAcknowledgedNoteReminder(true);
     setIsNoteReminderOpen(false);
-    setOrderUpdateIndex(0);
+    await submitDemoOrder(true);
   }
 
   return (
@@ -899,13 +980,14 @@ export function CustomerPageClient({ initialCatalog }: CustomerPageClientProps) 
 
             <button
               type="button"
-              onClick={submitDemoOrder}
+              onClick={() => submitDemoOrder()}
               className="focus-ring mt-2 inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-leaf px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              disabled={!selectedSlot || cartItems.length === 0}
+              disabled={!selectedSlot || cartItems.length === 0 || isSubmittingOrder}
             >
               <Send aria-hidden size={16} />
-              Submit order
+              {isSubmittingOrder ? "Submitting..." : "Submit order"}
             </button>
+            {submitError ? <p className="mt-2 rounded-lg bg-clay/10 px-3 py-2 text-xs font-semibold text-clay">{submitError}</p> : null}
           </section>
         ) : null}
 

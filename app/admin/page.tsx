@@ -3,14 +3,14 @@ import type { Route } from "next";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { StatusPill } from "@/components/status-pill";
-import { customerReviews, orders, profiles } from "@/lib/demo-data";
+import { customerReviews, profiles } from "@/lib/demo-data";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import {
   getOrderTotal,
-  getRevenueSummary,
   processingStatuses
 } from "@/lib/admin-metrics";
 import { getCatalogData } from "@/lib/supabase-catalog";
+import { getOrdersData } from "@/lib/supabase-orders";
 import { SlotCapacityManager } from "./slot-capacity-manager";
 import {
   Banknote,
@@ -26,9 +26,10 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const { products } = await getCatalogData();
+  const [{ products }, ordersData] = await Promise.all([getCatalogData(), getOrdersData()]);
+  const visibleOrders = ordersData.orders;
   const staff = profiles.filter((profile) => profile.role === "staff");
-  const latestOrders = [...orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
+  const latestOrders = [...visibleOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
   const latestReviews = [...customerReviews].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
   const popularityRank = {
     top_selling: 0,
@@ -54,11 +55,15 @@ export default async function AdminPage() {
     const bMove = Math.abs(b.price - (b.previousWeekPrice ?? b.price));
     return bMove - aMove;
   }).slice(0, 4);
-  const revenue = getRevenueSummary();
-  const paidOrders = orders.filter((order) => order.paymentState === "paid").length;
-  const pendingPayments = orders.filter((order) => order.paymentState !== "paid").length;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayRevenue = visibleOrders
+    .filter((order) => order.createdAt.startsWith(todayIso))
+    .reduce((total, order) => total + getOrderTotal(order), 0);
+  const cashHandled = visibleOrders.reduce((total, order) => total + order.cash.advanceCollected + order.cash.finalCollected, 0);
+  const paidOrders = visibleOrders.filter((order) => order.paymentState === "paid").length;
+  const pendingPayments = visibleOrders.filter((order) => order.paymentState !== "paid").length;
   const activeStaffIds = new Set(
-    orders
+    visibleOrders
       .filter((order) => order.assignedStaff && processingStatuses.includes(order.status))
       .map((order) => order.assignedStaff?.id)
   );
@@ -83,12 +88,12 @@ export default async function AdminPage() {
         <div className="grid items-start gap-2 lg:grid-cols-2">
           <div className="grid gap-2">
             <div className="grid gap-1.5 sm:grid-cols-3">
-              <StatTile label="Orders" value={String(orders.length)} />
+              <StatTile label="Orders" value={String(visibleOrders.length)} />
               <StatTile label="Products" value={String(products.length)} />
               <StatTile label="Staff" value={String(staff.length)} />
               <StatTile label="Pending pay" value={String(pendingPayments)} />
               <StatTile label="Reviews" value={String(customerReviews.length)} />
-              <StatTile label="Cash" value={formatCurrency(revenue.cashHandled)} />
+              <StatTile label="Cash" value={formatCurrency(cashHandled)} />
             </div>
 
             <DashboardSection
@@ -222,10 +227,10 @@ export default async function AdminPage() {
             actionLabel="Check payment details"
           >
             <div className="grid gap-1.5">
-              <MiniMetric label="Today revenue" value={formatCurrency(revenue.todayRevenue)} />
+              <MiniMetric label="Today revenue" value={formatCurrency(todayRevenue)} />
               <MiniMetric label="Paid orders" value={String(paidOrders)} />
               <MiniMetric label="Pending payments" value={String(pendingPayments)} />
-              <MiniMetric label="Cash handled" value={formatCurrency(revenue.cashHandled)} />
+              <MiniMetric label="Cash handled" value={formatCurrency(cashHandled)} />
             </div>
           </DashboardSection>
 
