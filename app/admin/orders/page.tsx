@@ -7,11 +7,28 @@ import { buildOrderProgressEvents, formatOrderEventTitle } from "@/lib/order-pro
 import { getOrderEventsForOrders, getOrdersData, getWhatsAppMessagesForOrders } from "@/lib/supabase-orders";
 import { AdminHomeHeader } from "../admin-header";
 import { ArrowLeft, BellRing, MapPin, MessageCircle, ReceiptText } from "lucide-react";
+import type { OrderStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminOrdersPage() {
+const orderFilters: Array<{ label: string; value: "all" | OrderStatus }> = [
+  { label: "All", value: "all" },
+  { label: "Pending", value: "submitted" },
+  { label: "Accepted", value: "assigned" },
+  { label: "Shopping", value: "shopping" },
+  { label: "Ready", value: "ready_for_delivery" },
+  { label: "Delivered", value: "delivered" }
+];
+
+export default async function AdminOrdersPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ status?: string }>;
+}) {
   const { orders } = await getOrdersData();
+  const params = await searchParams;
+  const activeFilter = orderFilters.some((filter) => filter.value === params?.status) ? params?.status ?? "all" : "all";
+  const visibleOrders = activeFilter === "all" ? orders : orders.filter((order) => order.status === activeFilter);
   const orderIds = orders.map((order) => order.id);
   const [eventsByOrderId, messagesByOrderId] = await Promise.all([
     getOrderEventsForOrders(orderIds),
@@ -34,7 +51,23 @@ export default async function AdminOrdersPage() {
       </section>
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:px-8">
-        {orders.map((order) => (
+        <div className="flex flex-wrap gap-2 rounded-md border border-ink/10 bg-white p-3 shadow-sm">
+          {orderFilters.map((filter) => (
+            <Link
+              key={filter.value}
+              href={filter.value === "all" ? "/admin/orders" : `/admin/orders?status=${filter.value}`}
+              className={
+                activeFilter === filter.value
+                  ? "focus-ring rounded-full bg-leaf px-3 py-1.5 text-xs font-semibold text-white"
+                  : "focus-ring rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold hover:border-leaf/40 hover:text-leaf"
+              }
+            >
+              {filter.label}
+            </Link>
+          ))}
+        </div>
+
+        {visibleOrders.map((order) => (
           <article key={order.id} className="rounded-md border border-ink/10 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -132,6 +165,11 @@ export default async function AdminOrdersPage() {
             </div>
           </article>
         ))}
+        {visibleOrders.length === 0 ? (
+          <p className="rounded-md border border-ink/10 bg-white p-6 text-center text-ink/58 shadow-sm">
+            No orders match this filter.
+          </p>
+        ) : null}
       </section>
     </AppShell>
   );

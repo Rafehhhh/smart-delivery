@@ -235,6 +235,21 @@ export default async function AdminPage() {
           </DashboardSection>
 
           <DashboardSection
+            id="whatsapp"
+            title="WhatsApp updates"
+            icon={MessageCircle}
+            actionHref="/admin/whatsapp"
+            actionLabel="Open update center"
+          >
+            <div className="grid gap-1.5">
+              <MiniMetric label="Generated logs" value="Open center" />
+              <p className="rounded-lg bg-limewash p-2 text-sm text-ink/62">
+                Review customer and staff fallback update links generated from order events.
+              </p>
+            </div>
+          </DashboardSection>
+
+          <DashboardSection
             id="reviews"
             title="Customer reviews"
             icon={Star}
