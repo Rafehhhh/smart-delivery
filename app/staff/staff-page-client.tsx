@@ -43,6 +43,8 @@ type StaffProfileState = Profile & {
   isAvailable: boolean;
 };
 
+type StaffMobileTab = "offers" | "current" | "checklist" | "report";
+
 export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
   const [orderList, setOrderList] = useState(initialOrders);
   const [actionError, setActionError] = useState("");
@@ -63,6 +65,7 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
   const [boughtItemIds, setBoughtItemIds] = useState<string[]>([]);
   const [cashDrafts, setCashDrafts] = useState<Record<string, { advanceCollected: string; finalCollected: string }>>({});
   const [activeStep, setActiveStep] = useState(0);
+  const [mobileTab, setMobileTab] = useState<StaffMobileTab>("offers");
 
   const activeOrders = useMemo(
     () =>
@@ -105,6 +108,7 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
       }
       setAcceptedOrderIds((current) => [...current, orderId]);
       setActiveStep(0);
+      setMobileTab("current");
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "Could not accept order.");
     }
@@ -311,37 +315,41 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
         </div>
       }
     >
-      <section className="mx-auto grid max-w-7xl gap-2 px-2 py-2 sm:px-3 lg:grid-cols-[0.72fr_1.28fr] lg:px-4">
-        <aside className="space-y-2">
-          <OpenOffers
-            offers={openOffers}
-            canAccept={profile.isAvailable && !hasActiveOrder}
-            unavailableReason={!profile.isAvailable ? "Set profile as available to accept orders." : "Complete the active order before accepting another."}
-            onAccept={acceptOrder}
-            onDecline={(orderId) => setDeclinedOrderIds((current) => [...current, orderId])}
-          />
+      <section className="mx-auto grid max-w-7xl gap-2 px-2 py-2 pb-24 sm:px-3 lg:grid-cols-[0.72fr_1.28fr] lg:px-4 lg:pb-2">
+        <aside className={mobileTab === "offers" || mobileTab === "checklist" ? "space-y-2" : "hidden space-y-2 lg:block"}>
+          <div className={mobileTab === "offers" ? "block" : "hidden lg:block"}>
+            <OpenOffers
+              offers={openOffers}
+              canAccept={profile.isAvailable && !hasActiveOrder}
+              unavailableReason={!profile.isAvailable ? "Set profile as available to accept orders." : "Complete the active order before accepting another."}
+              onAccept={acceptOrder}
+              onDecline={(orderId) => setDeclinedOrderIds((current) => [...current, orderId])}
+            />
+          </div>
           {actionError ? <p className="rounded-md bg-clay/10 px-3 py-2 text-sm font-semibold text-clay">{actionError}</p> : null}
 
-          <ActivityChecklist
-            hasActiveOrder={hasActiveOrder}
-            activeStep={activeStep}
-            canFinalizeInvoice={activeOrder ? activeOrder.items.every((item) => boughtItemIds.includes(item.id)) : false}
-            onStepChange={setActiveStep}
-            onCompleteDelivery={() => {
-              if (activeOrder) void completeOrder(activeOrder.id);
-            }}
-            onStatusStep={(status, nextStep) => {
-              if (!activeOrder) return;
-              if (status === "ready_for_delivery") {
-                void finalizeBoughtItems(activeOrder, nextStep);
-                return;
-              }
-              void updateOrderStatus(activeOrder.id, status, nextStep);
-            }}
-          />
+          <div className={mobileTab === "checklist" ? "block" : "hidden lg:block"}>
+            <ActivityChecklist
+              hasActiveOrder={hasActiveOrder}
+              activeStep={activeStep}
+              canFinalizeInvoice={activeOrder ? activeOrder.items.every((item) => boughtItemIds.includes(item.id)) : false}
+              onStepChange={setActiveStep}
+              onCompleteDelivery={() => {
+                if (activeOrder) void completeOrder(activeOrder.id);
+              }}
+              onStatusStep={(status, nextStep) => {
+                if (!activeOrder) return;
+                if (status === "ready_for_delivery") {
+                  void finalizeBoughtItems(activeOrder, nextStep);
+                  return;
+                }
+                void updateOrderStatus(activeOrder.id, status, nextStep);
+              }}
+            />
+          </div>
         </aside>
 
-        <div className="grid gap-2">
+        <div className={mobileTab === "current" ? "grid gap-2" : "hidden gap-2 lg:grid"}>
           {activeOrder ? (
             <StaffOrderCard
               order={activeOrder}
@@ -368,10 +376,17 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-2 px-2 pb-4 sm:px-3 lg:grid-cols-[1.25fr_0.75fr] lg:px-4">
+      <section className={mobileTab === "report" ? "mx-auto grid max-w-7xl gap-2 px-2 pb-24 sm:px-3 lg:grid-cols-[1.25fr_0.75fr] lg:px-4 lg:pb-4" : "mx-auto hidden max-w-7xl gap-2 px-2 pb-24 sm:px-3 lg:grid lg:grid-cols-[1.25fr_0.75fr] lg:px-4 lg:pb-4"}>
         <StaffReportCard activeOrders={activeOrders} completedOrders={deliveryHistory} />
         <DeliveryHistory orders={deliveryHistory} />
       </section>
+
+      <StaffBottomTabs
+        activeTab={mobileTab}
+        offerCount={openOffers.length}
+        hasActiveOrder={hasActiveOrder}
+        onChange={setMobileTab}
+      />
 
       {isProfileEditorOpen ? (
         <ProfileModal
@@ -381,6 +396,46 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
         />
       ) : null}
     </AppShell>
+  );
+}
+
+function StaffBottomTabs({
+  activeTab,
+  offerCount,
+  hasActiveOrder,
+  onChange
+}: {
+  activeTab: StaffMobileTab;
+  offerCount: number;
+  hasActiveOrder: boolean;
+  onChange: (tab: StaffMobileTab) => void;
+}) {
+  const tabs: Array<{ id: StaffMobileTab; label: string; icon: typeof ClipboardList; badge?: number | boolean }> = [
+    { id: "offers", label: "Offers", icon: ClipboardList, badge: offerCount },
+    { id: "current", label: "Current", icon: PackageCheck, badge: hasActiveOrder },
+    { id: "checklist", label: "Checklist", icon: CheckCircle2 },
+    { id: "report", label: "Report", icon: BarChart3 }
+  ];
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-ink/10 bg-white/95 px-2 py-1.5 shadow-soft backdrop-blur lg:hidden">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => onChange(tab.id)}
+          className={activeTab === tab.id ? "focus-ring relative flex flex-col items-center gap-0.5 rounded-xl bg-mint px-2 py-1.5 text-[11px] font-semibold text-leaf" : "focus-ring relative flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[11px] font-semibold text-ink/58"}
+        >
+          <tab.icon aria-hidden size={18} />
+          <span>{tab.label}</span>
+          {tab.badge ? (
+            <span className="absolute right-3 top-1 rounded-full bg-leaf px-1.5 text-[10px] leading-4 text-white">
+              {typeof tab.badge === "number" ? tab.badge : "1"}
+            </span>
+          ) : null}
+        </button>
+      ))}
+    </nav>
   );
 }
 

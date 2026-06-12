@@ -55,6 +55,7 @@ type QuantityControlProps = {
 type ProductSortMode = "name_asc" | "price_low" | "price_high";
 type ProductPriceRange = "all" | "under_50" | "50_100" | "100_250" | "above_250";
 type SlotDateOffset = 0 | 1 | 2;
+type CustomerMobileTab = "products" | "cart" | "orders" | "profile";
 type DemoOrderUpdate = {
   title: string;
   message: string;
@@ -230,6 +231,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
   const [hasAcknowledgedNoteReminder, setHasAcknowledgedNoteReminder] = useState(false);
   const [isCustomItemFormOpen, setIsCustomItemFormOpen] = useState(false);
   const [customItemDraft, setCustomItemDraft] = useState({ productName: "", note: "" });
+  const [mobileTab, setMobileTab] = useState<CustomerMobileTab>("products");
   const productControlsRef = useRef<HTMLDivElement>(null);
   const [profileDraft, setProfileDraft] = useState({
     name: customer.name,
@@ -640,7 +642,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
       }
     >
       <div className="lg:flex lg:h-[calc(100dvh-4.75rem)] lg:flex-col lg:overflow-hidden">
-      <section className="shrink-0 border-b border-ink/10 bg-white">
+      <section className={mobileTab === "products" ? "shrink-0 border-b border-ink/10 bg-white" : "hidden shrink-0 border-b border-ink/10 bg-white lg:block"}>
         <div className="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-6">
           <div className="flex items-center gap-2 rounded-full border border-ink bg-limewash px-3 py-2">
             <Search aria-hidden className="shrink-0 text-leaf" size={18} />
@@ -695,11 +697,11 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
       <section
         className={
           isCartVisible
-            ? "mx-auto grid w-full max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,2.25fr)_minmax(250px,0.9fr)_minmax(260px,0.9fr)] lg:overflow-hidden lg:px-6"
-            : "mx-auto grid w-full max-w-7xl items-stretch gap-2 px-2 py-2 sm:px-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,3fr)_minmax(290px,1fr)] lg:overflow-hidden lg:px-6"
+            ? "mx-auto grid w-full max-w-7xl items-stretch gap-2 px-2 py-2 pb-24 sm:px-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,2.25fr)_minmax(250px,0.9fr)_minmax(260px,0.9fr)] lg:overflow-hidden lg:px-6 lg:pb-2"
+            : "mx-auto grid w-full max-w-7xl items-stretch gap-2 px-2 py-2 pb-24 sm:px-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,3fr)_minmax(290px,1fr)] lg:overflow-hidden lg:px-6 lg:pb-2"
         }
       >
-        <main className="flex min-h-[560px] flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
+        <main className={mobileTab === "products" ? "flex min-h-[calc(100dvh-11rem)] flex-col lg:h-full lg:min-h-0 lg:overflow-hidden" : "hidden min-h-[calc(100dvh-11rem)] flex-col lg:flex lg:h-full lg:min-h-0 lg:overflow-hidden"}>
           <section
             id="products"
             className="flex h-full min-h-0 flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-soft"
@@ -793,10 +795,10 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
           </section>
         </main>
 
-        {isCartVisible ? (
+        {isCartVisible || mobileTab === "cart" ? (
           <section
             id="cart"
-            className="flex h-fit flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm scroll-mt-24 lg:h-full lg:min-h-0 lg:overflow-hidden"
+            className="flex max-h-[calc(100dvh-8.25rem)] flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm scroll-mt-24 lg:h-full lg:max-h-none lg:min-h-0 lg:overflow-hidden"
           >
             <div className="flex items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -806,6 +808,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
               <span className="text-xs font-semibold text-ink/56">{cartItems.length} items</span>
             </div>
 
+              {isCartVisible ? (
               <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
                 {cartItems.map((item, index) => {
                   const line = cart[index];
@@ -907,8 +910,23 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                   );
                 })}
               </div>
+              ) : (
+                <div className="mt-2 flex min-h-[220px] flex-1 items-center justify-center rounded-xl bg-limewash p-4 text-center">
+                  <div>
+                    <ShoppingCart aria-hidden className="mx-auto text-leaf" size={30} />
+                    <p className="mt-2 font-semibold">Your cart is empty</p>
+                    <button
+                      type="button"
+                      onClick={() => setMobileTab("products")}
+                      className="focus-ring mt-3 rounded-full bg-leaf px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Browse products
+                    </button>
+                  </div>
+                </div>
+              )}
 
-            <div className="mt-2 shrink-0 rounded-xl border border-dashed border-ink/18 bg-limewash p-2">
+            {isCartVisible ? <div className="mt-2 shrink-0 rounded-xl border border-dashed border-ink/18 bg-limewash p-2">
               {!isCustomItemFormOpen ? (
                 <button
                   type="button"
@@ -954,9 +972,9 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                   </button>
                 </div>
               )}
-            </div>
+            </div> : null}
 
-            <div className="mt-2 shrink-0">
+            {isCartVisible ? <div className="mt-2 shrink-0">
               <label className="flex items-center gap-2 text-sm font-semibold" htmlFor="slot">
                 <CalendarClock aria-hidden size={16} />
                 Delivery slot
@@ -995,9 +1013,9 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                   No available slots for this date. Please choose another date.
                 </p>
               )}
-            </div>
+            </div> : null}
 
-            <div className="mt-2 shrink-0 space-y-1 rounded-xl bg-limewash p-2">
+            {isCartVisible ? <div className="mt-2 shrink-0 space-y-1 rounded-xl bg-limewash p-2">
               <div className="flex justify-between text-xs">
                 <span>Items estimate</span>
                 <strong>{formatCurrency(subtotal)}</strong>
@@ -1014,9 +1032,9 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                 <span>Estimated slot</span>
                 <strong className="text-right text-ink">{selectedSlot?.label}</strong>
               </div>
-            </div>
+            </div> : null}
 
-            <button
+            {isCartVisible ? <button
               type="button"
               onClick={() => submitDemoOrder()}
               className="focus-ring mt-2 inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-leaf px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
@@ -1024,13 +1042,13 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
             >
               <Send aria-hidden size={16} />
               {isSubmittingOrder ? "Submitting..." : "Submit order"}
-            </button>
+            </button> : null}
             {submitError ? <p className="mt-2 rounded-lg bg-clay/10 px-3 py-2 text-xs font-semibold text-clay">{submitError}</p> : null}
           </section>
         ) : null}
 
-        <aside className="h-fit space-y-2 lg:h-full lg:min-h-0 lg:overflow-y-auto">
-          <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
+        <aside className={mobileTab === "orders" ? "h-fit space-y-2 lg:h-full lg:min-h-0 lg:overflow-y-auto" : "hidden h-fit space-y-2 lg:block lg:h-full lg:min-h-0 lg:overflow-y-auto"}>
+          <section className="hidden rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm lg:block">
             <ProductHighlightGroup title="Popular products" icon={Flame} products={popularProducts} onSelect={selectFromHighlight} />
             <ProductHighlightGroup title="Big price changes" icon={Tag} products={priceMoverProducts} onSelect={selectFromHighlight} />
           </section>
@@ -1039,8 +1057,18 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
           <LatestDeliveryCard order={latestOrder} totalOrders={customerOrders.length} />
 
         </aside>
+        {mobileTab === "profile" ? (
+          <MobileCustomerProfile profile={profileDraft} onManageAddress={() => setIsAddressEditorOpen(true)} />
+        ) : null}
       </section>
       </div>
+
+      <CustomerBottomTabs
+        activeTab={mobileTab}
+        cartCount={cartItems.length}
+        orderCount={activeCustomerOrders.length}
+        onChange={setMobileTab}
+      />
 
       {activeOrderUpdate ? <OrderUpdateToast update={activeOrderUpdate} onClose={() => setOrderUpdateIndex(null)} /> : null}
 
@@ -1559,6 +1587,83 @@ function CustomerProfileMenu({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function MobileCustomerProfile({
+  profile,
+  onManageAddress
+}: {
+  profile: {
+    name: string;
+    phone: string;
+    houseName: string;
+    addressLine: string;
+    landmark: string;
+    locality: string;
+  };
+  onManageAddress: () => void;
+}) {
+  return (
+    <section className="rounded-xl border border-ink/10 bg-white p-3 shadow-sm lg:hidden">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-leaf">Profile</p>
+      <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold">
+        <UserRound aria-hidden size={19} />
+        {profile.name}
+      </h2>
+      <p className="mt-1 text-sm text-ink/58">{profile.phone}</p>
+      <div className="mt-3 rounded-xl bg-limewash p-3 text-sm">
+        <p className="font-semibold">{profile.houseName}</p>
+        <p className="mt-1 text-ink/62">{profile.addressLine}</p>
+        {profile.landmark ? <p className="mt-1 text-ink/62">{profile.landmark}</p> : null}
+        <p className="mt-1 text-ink/62">{profile.locality}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onManageAddress}
+        className="focus-ring mt-3 inline-flex w-full items-center justify-center rounded-full bg-leaf px-4 py-3 text-sm font-semibold text-white"
+      >
+        Manage address
+      </button>
+    </section>
+  );
+}
+
+function CustomerBottomTabs({
+  activeTab,
+  cartCount,
+  orderCount,
+  onChange
+}: {
+  activeTab: CustomerMobileTab;
+  cartCount: number;
+  orderCount: number;
+  onChange: (tab: CustomerMobileTab) => void;
+}) {
+  const tabs: Array<{ id: CustomerMobileTab; label: string; icon: typeof PackageSearch; badge?: number }> = [
+    { id: "products", label: "Products", icon: PackageSearch },
+    { id: "cart", label: "Cart", icon: ShoppingCart, badge: cartCount },
+    { id: "orders", label: "Orders", icon: CalendarClock, badge: orderCount },
+    { id: "profile", label: "Profile", icon: UserRound }
+  ];
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-ink/10 bg-white/95 px-2 py-1.5 shadow-soft backdrop-blur lg:hidden">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => onChange(tab.id)}
+          className={activeTab === tab.id ? "focus-ring relative flex flex-col items-center gap-0.5 rounded-xl bg-mint px-2 py-1.5 text-[11px] font-semibold text-leaf" : "focus-ring relative flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[11px] font-semibold text-ink/58"}
+        >
+          <tab.icon aria-hidden size={18} />
+          <span>{tab.label}</span>
+          {tab.badge ? (
+            <span className="absolute right-3 top-1 rounded-full bg-leaf px-1.5 text-[10px] leading-4 text-white">{tab.badge}</span>
+          ) : null}
+        </button>
+      ))}
+    </nav>
   );
 }
 
