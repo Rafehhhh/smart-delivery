@@ -79,6 +79,11 @@ export const productSchema = z.object({
   name: z.string().min(1),
   unit: z.string().min(1),
   price: z.number().min(0),
+  previousWeekPrice: z.number().min(0).optional().nullable(),
+  retailRange: z.string().optional().nullable(),
+  sourceNote: z.string().optional().nullable(),
+  popularity: z.enum(["popular", "top_selling", "seasonal", "standard"]).optional().nullable(),
+  bestValueShop: z.string().optional().nullable(),
   isApproximatePrice: z.boolean().default(false),
   isAvailable: z.boolean().default(true)
 });

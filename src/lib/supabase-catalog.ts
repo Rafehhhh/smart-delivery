@@ -15,6 +15,10 @@ export type CatalogData = {
   source: "supabase" | "demo";
 };
 
+export type CatalogDataOptions = {
+  includeUnavailableProducts?: boolean;
+};
+
 export type SupabaseCategoryRow = {
   id: string;
   source_key: string | null;
@@ -126,7 +130,7 @@ export function mapServiceFeeRuleRow(row: SupabaseServiceFeeRuleRow): ServiceFee
   };
 }
 
-export async function getCatalogData(): Promise<CatalogData> {
+export async function getCatalogData(options: CatalogDataOptions = {}): Promise<CatalogData> {
   if (!hasSupabaseCatalogConfig()) return fallbackCatalog();
 
   try {
@@ -141,17 +145,22 @@ export async function getCatalogData(): Promise<CatalogData> {
       }
     );
 
+    let productQuery = supabase
+      .from("products")
+      .select("id, source_key, category_id, name, unit, price, previous_week_price, price_trend, retail_range, popularity, recommendation, best_value_shop, source_note, is_approximate_price, is_available")
+      .order("name", { ascending: true });
+
+    if (!options.includeUnavailableProducts) {
+      productQuery = productQuery.eq("is_available", true);
+    }
+
     const [categoryResult, productResult, slotResult, feeResult] = await Promise.all([
       supabase
         .from("categories")
         .select("id, source_key, name, description")
         .order("sort_order", { ascending: true })
         .order("name", { ascending: true }),
-      supabase
-        .from("products")
-        .select("id, source_key, category_id, name, unit, price, previous_week_price, price_trend, retail_range, popularity, recommendation, best_value_shop, source_note, is_approximate_price, is_available")
-        .eq("is_available", true)
-        .order("name", { ascending: true }),
+      productQuery,
       supabase
         .from("delivery_slots")
         .select("id, source_key, label, starts_at, ends_at, capacity, reserved")
