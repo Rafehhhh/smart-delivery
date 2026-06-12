@@ -232,6 +232,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
   const [isCustomItemFormOpen, setIsCustomItemFormOpen] = useState(false);
   const [customItemDraft, setCustomItemDraft] = useState({ productName: "", note: "" });
   const [mobileTab, setMobileTab] = useState<CustomerMobileTab>("products");
+  const [isMobileCartDrawerOpen, setIsMobileCartDrawerOpen] = useState(false);
   const productControlsRef = useRef<HTMLDivElement>(null);
   const [profileDraft, setProfileDraft] = useState({
     name: customer.name,
@@ -617,24 +618,38 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
             href={isCartVisible ? "#cart" : "#products"}
             aria-label="Cart"
             title="Cart"
-            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/15 bg-white text-ink hover:border-leaf/40 hover:text-leaf"
+            onClick={(event) => {
+              event.preventDefault();
+              setMobileTab(isCartVisible ? "cart" : "products");
+            }}
+            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-white text-ink shadow-sm hover:border-leaf/40 hover:text-leaf lg:hidden"
           >
             <ShoppingCart aria-hidden size={16} />
           </a>
-          <CustomerProfileMenu
-            profile={profileDraft}
-            isOpen={isProfileOpen}
-            onToggle={() => setIsProfileOpen((current) => !current)}
-            onManageAddress={() => {
-              setIsProfileOpen(false);
-              setIsAddressEditorOpen(true);
-            }}
-          />
+          <a
+            href={isCartVisible ? "#cart" : "#products"}
+            aria-label="Cart"
+            title="Cart"
+            className="focus-ring hidden h-9 w-9 items-center justify-center rounded-full border border-ink/15 bg-white text-ink hover:border-leaf/40 hover:text-leaf lg:inline-flex"
+          >
+            <ShoppingCart aria-hidden size={16} />
+          </a>
+          <div className="hidden lg:block">
+            <CustomerProfileMenu
+              profile={profileDraft}
+              isOpen={isProfileOpen}
+              onToggle={() => setIsProfileOpen((current) => !current)}
+              onManageAddress={() => {
+                setIsProfileOpen(false);
+                setIsAddressEditorOpen(true);
+              }}
+            />
+          </div>
           <a
             href="/"
             aria-label="Home"
             title="Home"
-            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/15 bg-white text-ink hover:border-leaf/40 hover:text-leaf"
+            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-white text-ink shadow-sm hover:border-leaf/40 hover:text-leaf lg:border-ink/15 lg:shadow-none"
           >
             <Home aria-hidden size={16} />
           </a>
@@ -704,7 +719,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
         <main className={mobileTab === "products" ? "flex min-h-[calc(100dvh-11rem)] flex-col lg:h-full lg:min-h-0 lg:overflow-hidden" : "hidden min-h-[calc(100dvh-11rem)] flex-col lg:flex lg:h-full lg:min-h-0 lg:overflow-hidden"}>
           <section
             id="products"
-            className="flex h-full min-h-0 flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-soft"
+            className="flex h-full min-h-0 flex-col rounded-xl border border-ink/20 bg-white p-2 shadow-soft lg:border-ink/10 lg:p-2.5"
           >
             <div className="flex flex-col gap-1 border-b border-ink/10 pb-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -713,7 +728,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                   <PackageSearch aria-hidden size={18} />
                   {globalSearchTerm.trim() ? "Search results" : activeCategoryLabel}
                 </h1>
-                <p className="mt-0.5 text-xs text-ink/58">
+                <p className="mt-0.5 hidden text-xs text-ink/58 sm:block">
                   Search, filter, and sort from the top controls. Prices are approximate local-market entries.
                 </p>
               </div>
@@ -728,14 +743,14 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
 
             {productRows.length > 0 ? (
               <div className="mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-                <table className={isCartVisible ? "w-full table-fixed border-separate border-spacing-y-1 text-left text-[11px]" : "w-full table-fixed border-separate border-spacing-y-1 text-left text-xs"}>
+                <table className={isCartVisible ? "w-full table-fixed border-separate border-spacing-y-1 text-left text-[10px] lg:text-[11px]" : "w-full table-fixed border-separate border-spacing-y-1 text-left text-[10px] lg:text-xs"}>
                   <colgroup>
                     <col className={isCartVisible ? "w-[6%]" : "w-[7%]"} />
-                    <col className={isCartVisible ? "w-[29%]" : "w-[27%]"} />
-                    <col className={isCartVisible ? "w-[16%]" : "w-[15%]"} />
-                    <col className={isCartVisible ? "w-[14%]" : "w-[13%]"} />
-                    <col className={isCartVisible ? "w-[24%]" : "w-[24%]"} />
-                    <col className={isCartVisible ? "w-[11%]" : "w-[14%]"} />
+                    <col className={isCartVisible ? "w-[30%]" : "w-[29%]"} />
+                    <col className={isCartVisible ? "w-[17%]" : "w-[16%]"} />
+                    <col className={isCartVisible ? "w-[14%]" : "w-[14%]"} />
+                    <col className={isCartVisible ? "w-[23%]" : "w-[24%]"} />
+                    <col className={isCartVisible ? "w-[10%]" : "w-[10%]"} />
                   </colgroup>
                   <thead className="sticky top-0 z-10 bg-white">
                     <tr className="text-ink/58">
@@ -750,18 +765,18 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                   <tbody>
                     {productRows.map((product, index) => (
                         <tr key={product.id} className="bg-limewash hover:bg-mint/60">
-                          <td className={isCartVisible ? "rounded-l-xl px-1 py-1 font-semibold text-ink/50" : "rounded-l-xl px-2 py-1.5 font-semibold text-ink/50"}>{index + 1}</td>
-                          <td className={isCartVisible ? "min-w-0 px-1 py-1" : "min-w-0 px-2 py-1.5"}>
+                          <td className={isCartVisible ? "rounded-l-xl px-1 py-1 font-semibold text-ink/50" : "rounded-l-xl px-1 py-1 font-semibold text-ink/50 lg:px-2 lg:py-1.5"}>{index + 1}</td>
+                          <td className={isCartVisible ? "min-w-0 px-1 py-1" : "min-w-0 px-1 py-1 lg:px-2 lg:py-1.5"}>
                             <p className={isCartVisible ? "truncate font-semibold leading-tight" : "truncate font-semibold"}>{product.name}</p>
-                            <p className={isCartVisible ? "mt-0.5 truncate text-[10px] leading-tight text-ink/52" : "mt-0.5 truncate text-[11px] text-ink/52"}>{product.retailRange ?? "Admin-maintained local price"}</p>
+                            <p className={isCartVisible ? "mt-0.5 truncate text-[9px] leading-tight text-ink/52 lg:text-[10px]" : "mt-0.5 truncate text-[9px] text-ink/52 lg:text-[11px]"}>{product.retailRange ?? "Admin-maintained local price"}</p>
                           </td>
-                          <td className={isCartVisible ? "px-1 py-1 font-semibold leading-tight" : "px-2 py-1.5 font-semibold"}>
+                          <td className={isCartVisible ? "px-1 py-1 font-semibold leading-tight" : "px-1 py-1 font-semibold lg:px-2 lg:py-1.5"}>
                             {hasKnownPrice(product) ? `${formatCurrency(product.price)} / ${product.unit}` : "Price pending"}
                           </td>
-                          <td className={isCartVisible ? "px-1 py-1 font-semibold leading-tight text-leaf" : "px-2 py-1.5 font-semibold text-leaf"}>
+                          <td className={isCartVisible ? "px-1 py-1 font-semibold leading-tight text-leaf" : "px-1 py-1 font-semibold text-leaf lg:px-2 lg:py-1.5"}>
                             {hasKnownPrice(product) ? formatCurrency(product.price * getDraftQuantity(product.id)) : "Pending"}
                           </td>
-                          <td className={isCartVisible ? "px-1 py-1" : "px-2 py-1.5"}>
+                          <td className={isCartVisible ? "px-1 py-1" : "px-1 py-1 lg:px-2 lg:py-1.5"}>
                             <QuantityControl
                               value={getDraftQuantity(product.id)}
                               unit={product.unit}
@@ -770,14 +785,14 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                               onChange={(quantity) => setDraftQuantity(product.id, quantity)}
                             />
                           </td>
-                          <td className={isCartVisible ? "rounded-r-xl px-1 py-1" : "rounded-r-xl px-2 py-1.5"}>
+                          <td className={isCartVisible ? "rounded-r-xl px-1 py-1" : "rounded-r-xl px-1 py-1 lg:px-2 lg:py-1.5"}>
                             <button
                               type="button"
                               onClick={() => addProductToCart(product.id)}
-                              className={isCartVisible ? "focus-ring inline-flex items-center justify-center rounded-full bg-leaf px-2 py-1 text-[10px] font-semibold text-white" : "focus-ring inline-flex items-center gap-1.5 rounded-full bg-leaf px-3 py-1.5 text-xs font-semibold text-white"}
+                              className={isCartVisible ? "focus-ring inline-flex h-7 w-7 items-center justify-center rounded-full bg-leaf text-white lg:h-auto lg:w-auto lg:px-2 lg:py-1 lg:text-[10px] lg:font-semibold" : "focus-ring inline-flex h-7 w-7 items-center justify-center rounded-full bg-leaf text-white lg:h-auto lg:w-auto lg:gap-1.5 lg:px-3 lg:py-1.5 lg:text-xs lg:font-semibold"}
                             >
                               <ShoppingCart aria-hidden size={isCartVisible ? 12 : 14} />
-                              <span className={isCartVisible ? "sr-only" : ""}>Add</span>
+                              <span className={isCartVisible ? "sr-only" : "sr-only lg:not-sr-only"}>Add</span>
                             </button>
                           </td>
                         </tr>
@@ -798,7 +813,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
         {isCartVisible || mobileTab === "cart" ? (
           <section
             id="cart"
-            className="flex max-h-[calc(100dvh-8.25rem)] flex-col rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm scroll-mt-24 lg:h-full lg:max-h-none lg:min-h-0 lg:overflow-hidden"
+            className={mobileTab === "cart" ? "flex max-h-[calc(100dvh-8.25rem)] flex-col rounded-xl border border-ink/20 bg-white p-2.5 shadow-soft scroll-mt-24 lg:h-full lg:max-h-none lg:min-h-0 lg:overflow-hidden lg:border-ink/10 lg:shadow-sm" : "hidden max-h-[calc(100dvh-8.25rem)] flex-col rounded-xl border border-ink/20 bg-white p-2.5 shadow-soft scroll-mt-24 lg:flex lg:h-full lg:max-h-none lg:min-h-0 lg:overflow-hidden lg:border-ink/10 lg:shadow-sm"}
           >
             <div className="flex items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -1062,6 +1077,26 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
         ) : null}
       </section>
       </div>
+
+      {isCartVisible && mobileTab === "products" ? (
+        <MobileMiniCartDrawer
+          isOpen={isMobileCartDrawerOpen}
+          cartItems={cartItems}
+          cartLines={cart}
+          onOpen={() => setIsMobileCartDrawerOpen(true)}
+          onClose={() => setIsMobileCartDrawerOpen(false)}
+          onRemove={removeCartLine}
+          onOpenFullCart={() => {
+            setIsMobileCartDrawerOpen(false);
+            setMobileTab("cart");
+          }}
+          onEditNote={(lineKey) => {
+            setIsMobileCartDrawerOpen(false);
+            setOpenNoteIds((current) => ({ ...current, [lineKey]: true }));
+            setMobileTab("cart");
+          }}
+        />
+      ) : null}
 
       <CustomerBottomTabs
         activeTab={mobileTab}
@@ -1535,6 +1570,118 @@ function OrderUpdateToast({ update, onClose }: { update: DemoOrderUpdate; onClos
         </button>
       </div>
     </section>
+  );
+}
+
+function MobileMiniCartDrawer({
+  isOpen,
+  cartItems,
+  cartLines,
+  onOpen,
+  onClose,
+  onRemove,
+  onEditNote,
+  onOpenFullCart
+}: {
+  isOpen: boolean;
+  cartItems: OrderItem[];
+  cartLines: CartLine[];
+  onOpen: () => void;
+  onClose: () => void;
+  onRemove: (lineKey: string) => void;
+  onEditNote: (lineKey: string) => void;
+  onOpenFullCart: () => void;
+}) {
+  const previewItems = cartItems.slice(0, 4);
+
+  return (
+    <>
+      {!isOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="focus-ring fixed left-0 top-1/2 z-40 flex -translate-y-1/2 items-center gap-1 rounded-r-2xl border border-l-0 border-ink/20 bg-white/95 px-2 py-4 text-leaf shadow-soft lg:hidden"
+          aria-label="Open cart drawer"
+          title="Open cart"
+        >
+          <ShoppingCart aria-hidden size={18} />
+          <span className="text-xs font-semibold">{cartItems.length}</span>
+        </button>
+      ) : null}
+
+      {isOpen ? (
+        <div className="fixed inset-0 z-40 bg-ink/20 lg:hidden" onClick={onClose}>
+          <aside
+            className="flex h-full w-[82vw] max-w-[320px] flex-col border-r border-ink/20 bg-white p-3 shadow-soft"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-ink/10 pb-2">
+              <h2 className="flex items-center gap-2 text-base font-semibold">
+                <ShoppingCart aria-hidden size={18} />
+                Mini cart
+              </h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-ink/20 text-ink/62"
+                aria-label="Close cart drawer"
+              >
+                <X aria-hidden size={15} />
+              </button>
+            </div>
+
+            <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
+              {previewItems.map((item, index) => {
+                const line = cartLines[index];
+                const lineKey = getCartLineKey(line);
+                const isEstimatePending = item.estimatedPrice <= 0;
+                return (
+                  <article key={lineKey} className="rounded-xl border border-ink/15 bg-limewash p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{item.productName}</p>
+                        <p className="mt-0.5 text-xs text-ink/58">
+                          {isEstimatePending ? "Estimate pending" : `${formatQuantity(item.requestedQuantity, item.unit)} x ${formatCurrency(item.estimatedPrice)}`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onRemove(lineKey)}
+                        className="focus-ring inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-ink/20 bg-white text-ink/58"
+                        aria-label={`Remove ${item.productName}`}
+                      >
+                        <Trash2 aria-hidden size={13} />
+                      </button>
+                    </div>
+                    {item.notes?.trim() ? <p className="mt-1 rounded-lg bg-white px-2 py-1 text-xs text-ink/62">{item.notes}</p> : null}
+                    <button
+                      type="button"
+                      onClick={() => onEditNote(lineKey)}
+                      className="focus-ring mt-1.5 rounded-full border border-ink/20 bg-white px-2.5 py-1 text-xs font-semibold text-ink/68"
+                    >
+                      {item.notes?.trim() ? "Edit note" : "Add note"}
+                    </button>
+                  </article>
+                );
+              })}
+              {cartItems.length > previewItems.length ? (
+                <p className="rounded-xl bg-mint px-3 py-2 text-center text-xs font-semibold text-leaf">
+                  +{cartItems.length - previewItems.length} more in full cart
+                </p>
+              ) : null}
+            </div>
+
+            <button
+              type="button"
+              onClick={onOpenFullCart}
+              className="focus-ring mt-3 inline-flex w-full items-center justify-center rounded-full bg-leaf px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              Open full cart
+            </button>
+          </aside>
+        </div>
+      ) : null}
+    </>
   );
 }
 
