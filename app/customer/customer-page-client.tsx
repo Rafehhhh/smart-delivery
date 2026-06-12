@@ -585,6 +585,27 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
     await submitDemoOrder(true);
   }
 
+  async function cancelOrder(orderId: string) {
+    setSubmitError("");
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not cancel order.");
+      setCustomerOrders((current) => current.map((order) => (order.id === orderId ? { ...order, status: "cancelled" } : order)));
+      setOrderUpdateIndex(null);
+      setLiveOrderUpdate({
+        title: "Order cancelled",
+        message: "Your order was cancelled before staff accepted it."
+      });
+    } catch (caught) {
+      setSubmitError(caught instanceof Error ? caught.message : "Could not cancel order.");
+    }
+  }
+
   return (
     <AppShell
       hideNav
@@ -1014,7 +1035,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
             <ProductHighlightGroup title="Big price changes" icon={Tag} products={priceMoverProducts} onSelect={selectFromHighlight} />
           </section>
 
-          <ActiveOrdersCard orders={activeCustomerOrders} />
+          <ActiveOrdersCard orders={activeCustomerOrders} onCancel={cancelOrder} />
           <LatestDeliveryCard order={latestOrder} totalOrders={customerOrders.length} />
 
         </aside>
@@ -1345,7 +1366,7 @@ function FilterOption({ children, selected, onClick }: { children: ReactNode; se
   );
 }
 
-function ActiveOrdersCard({ orders }: { orders: Order[] }) {
+function ActiveOrdersCard({ orders, onCancel }: { orders: Order[]; onCancel: (orderId: string) => void }) {
   return (
     <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
       <div className="flex items-center justify-between gap-2">
@@ -1390,6 +1411,15 @@ function ActiveOrdersCard({ orders }: { orders: Order[] }) {
                 <span>{order.finalTotal ? "Final invoice" : "Estimate"}</span>
                 <strong>{formatCurrency(order.finalTotal ?? order.estimateTotal + order.serviceFee)}</strong>
               </div>
+              {order.status === "submitted" && !order.assignedStaff ? (
+                <button
+                  type="button"
+                  onClick={() => onCancel(order.id)}
+                  className="focus-ring mt-2 inline-flex w-full items-center justify-center rounded-full border border-clay/25 bg-white px-3 py-1.5 text-xs font-semibold text-clay"
+                >
+                  Cancel before staff accepts
+                </button>
+              ) : null}
             </article>
           );
         })}
