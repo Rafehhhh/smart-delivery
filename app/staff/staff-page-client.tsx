@@ -61,6 +61,7 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
   const [declinedOrderIds, setDeclinedOrderIds] = useState<string[]>([]);
   const [completedOrderIds, setCompletedOrderIds] = useState<string[]>([]);
   const [boughtItemIds, setBoughtItemIds] = useState<string[]>([]);
+  const [cashDrafts, setCashDrafts] = useState<Record<string, { advanceCollected: string; finalCollected: string }>>({});
   const [activeStep, setActiveStep] = useState(0);
 
   const activeOrders = useMemo(
@@ -217,6 +218,57 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
     }
   }
 
+  async function recordCashSettlement(order: Order, finalPayable: number) {
+    const draft = cashDrafts[order.id] ?? {
+      advanceCollected: String(order.cash.advanceCollected || 0),
+      finalCollected: String(order.cash.finalCollected || 0)
+    };
+    const advanceCollected = Number(draft.advanceCollected || 0);
+    const finalCollected = Number(draft.finalCollected || 0);
+    if (!Number.isFinite(advanceCollected) || !Number.isFinite(finalCollected)) {
+      setActionError("Enter valid cash amounts.");
+      return;
+    }
+
+    setActionError("");
+    try {
+      const response = await fetch(`/api/staff/orders/${order.id}/cash`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ advanceCollected, finalCollected, finalPayable })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not record cash.");
+      setOrderList((current) =>
+        current.map((entry) =>
+          entry.id === order.id
+            ? { ...entry, cash: payload.data?.cash ?? entry.cash, paymentState: payload.data?.paymentState ?? entry.paymentState }
+            : entry
+        )
+      );
+      setCashDrafts((current) => ({
+        ...current,
+        [order.id]: {
+          advanceCollected: String(payload.data?.cash?.advanceCollected ?? advanceCollected),
+          finalCollected: String(payload.data?.cash?.finalCollected ?? finalCollected)
+        }
+      }));
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Could not record cash.");
+    }
+  }
+
+  function updateCashDraft(orderId: string, field: "advanceCollected" | "finalCollected", value: string) {
+    setCashDrafts((current) => ({
+      ...current,
+      [orderId]: {
+        advanceCollected: current[orderId]?.advanceCollected ?? "0",
+        finalCollected: current[orderId]?.finalCollected ?? "0",
+        [field]: value
+      }
+    }));
+  }
+
   function toggleBoughtItem(itemId: string) {
     setBoughtItemIds((current) =>
       current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId]
@@ -298,6 +350,9 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
               onStatusStep={(status, nextStep) => updateOrderStatus(activeOrder.id, status, nextStep)}
               onFinalizeInvoice={(nextStep) => finalizeBoughtItems(activeOrder, nextStep)}
               onComplete={() => completeOrder(activeOrder.id)}
+              cashDraft={cashDrafts[activeOrder.id]}
+              onCashDraftChange={updateCashDraft}
+              onRecordCash={(finalPayable) => recordCashSettlement(activeOrder, finalPayable)}
               boughtItemIds={boughtItemIds}
               onToggleBought={toggleBoughtItem}
             />
@@ -556,6 +611,9 @@ function StaffOrderCard({
   onStatusStep,
   onFinalizeInvoice,
   onComplete,
+  cashDraft,
+  onCashDraftChange,
+  onRecordCash,
   boughtItemIds,
   onToggleBought
 }: {
@@ -565,6 +623,9 @@ function StaffOrderCard({
   onStatusStep: (status: OrderStatus, nextStep: number) => void;
   onFinalizeInvoice: (nextStep: number) => void;
   onComplete: () => void;
+  cashDraft?: { advanceCollected: string; finalCollected: string };
+  onCashDraftChange: (orderId: string, field: "advanceCollected" | "finalCollected", value: string) => void;
+  onRecordCash: (finalPayable: number) => void;
   boughtItemIds: string[];
   onToggleBought: (itemId: string) => void;
 }) {
@@ -574,6 +635,9 @@ function StaffOrderCard({
   const whatsappUrl = buildWhatsAppFallbackUrl(order.customer.phone, message);
   const allItemsBought = order.items.length > 0 && order.items.every((item) => boughtItemIds.includes(item.id));
   const allItemsFinalized = areAllOrderItemsFinalized(order.items);
+  const isCashSettled = order.cash.balanceDue === 0 && order.cash.refundDue === 0;
+  const advanceDraft = cashDraft?.advanceCollected ?? String(order.cash.advanceCollected || 0);
+  const finalDraft = cashDraft?.finalCollected ?? String(order.cash.finalCollected || 0);
 
   return (
     <article className="flex h-full flex-col rounded-md border border-ink/10 bg-white shadow-soft">
@@ -692,6 +756,35 @@ function StaffOrderCard({
               <strong className="mt-0.5 block">{formatCurrency(order.cash.refundDue)}</strong>
             </div>
           </div>
+          <div className="mt-2 grid gap-1.5 sm:grid-cols-[1fr_1fr_auto]">
+            <label className="grid gap-1 text-xs font-semibold text-ink/58">
+              Advance collected
+              <input
+                type="number"
+                min="0"
+                value={advanceDraft}
+                onChange={(event) => onCashDraftChange(order.id, "advanceCollected", event.target.value)}
+                className="focus-ring rounded-md border border-ink/15 bg-white px-2.5 py-2 text-sm font-semibold text-ink"
+              />
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-ink/58">
+              Final collected
+              <input
+                type="number"
+                min="0"
+                value={finalDraft}
+                onChange={(event) => onCashDraftChange(order.id, "finalCollected", event.target.value)}
+                className="focus-ring rounded-md border border-ink/15 bg-white px-2.5 py-2 text-sm font-semibold text-ink"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => onRecordCash(finalPayable)}
+              className="focus-ring self-end rounded-md bg-leaf px-3 py-2 text-sm font-semibold text-white"
+            >
+              Record cash
+            </button>
+          </div>
           <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
             <button
               type="button"
@@ -713,8 +806,16 @@ function StaffOrderCard({
             <button
               type="button"
               onClick={onComplete}
-              disabled={!allItemsBought || !allItemsFinalized}
-              title={!allItemsBought ? "Mark every product as bought first." : !allItemsFinalized ? "Finalize the invoice before completing delivery." : "Complete delivery"}
+              disabled={!allItemsBought || !allItemsFinalized || !isCashSettled}
+              title={
+                !allItemsBought
+                  ? "Mark every product as bought first."
+                  : !allItemsFinalized
+                    ? "Finalize the invoice before completing delivery."
+                    : !isCashSettled
+                      ? "Record cash settlement before completing delivery."
+                      : "Complete delivery"
+              }
               className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
             >
               <CheckCircle2 aria-hidden size={17} />

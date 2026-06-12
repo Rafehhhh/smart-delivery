@@ -315,6 +315,9 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
   const latestOrder = [...customerOrders].sort(
     (first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
   )[0];
+  const activeCustomerOrders = customerOrders
+    .filter((order) => order.status !== "delivered" && order.status !== "cancelled")
+    .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime());
   const activeOrderUpdate = liveOrderUpdate ?? (orderUpdateIndex === null ? null : demoOrderUpdates[orderUpdateIndex]);
 
   useEffect(() => {
@@ -1011,6 +1014,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
             <ProductHighlightGroup title="Big price changes" icon={Tag} products={priceMoverProducts} onSelect={selectFromHighlight} />
           </section>
 
+          <ActiveOrdersCard orders={activeCustomerOrders} />
           <LatestDeliveryCard order={latestOrder} totalOrders={customerOrders.length} />
 
         </aside>
@@ -1338,6 +1342,60 @@ function FilterOption({ children, selected, onClick }: { children: ReactNode; se
     >
       {children}
     </button>
+  );
+}
+
+function ActiveOrdersCard({ orders }: { orders: Order[] }) {
+  return (
+    <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Active orders</h2>
+        <span className="rounded-full bg-mint px-2.5 py-1 text-xs font-semibold text-leaf">{orders.length} active</span>
+      </div>
+      <div className="mt-2 grid gap-2">
+        {orders.slice(0, 2).map((order) => {
+          const progressIndex = getOrderProgressIndex(order.status);
+          return (
+            <article key={order.id} className="rounded-xl bg-limewash p-2.5 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold">{order.orderNumber}</p>
+                  <p className="mt-0.5 text-xs text-ink/58">{order.slot.label}</p>
+                </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold capitalize text-leaf">
+                  {formatOrderStatus(order.status)}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-6 gap-1">
+                {orderProgressSteps.map((step, index) => (
+                  <span
+                    key={step.status}
+                    title={step.label}
+                    className={index <= progressIndex ? "h-1.5 rounded-full bg-leaf" : "h-1.5 rounded-full bg-white"}
+                  />
+                ))}
+              </div>
+              {order.assignedStaff ? (
+                <div className="mt-2 rounded-lg bg-white p-2 text-xs">
+                  <span className="text-ink/52">Staff</span>
+                  <strong className="ml-1">{order.assignedStaff.name}</strong>
+                  <a href={`tel:${order.assignedStaff.phone}`} className="ml-2 font-semibold text-leaf">
+                    {order.assignedStaff.phone}
+                  </a>
+                </div>
+              ) : (
+                <p className="mt-2 rounded-lg bg-white p-2 text-xs font-semibold text-ink/58">Waiting for staff acceptance</p>
+              )}
+              <div className="mt-2 flex justify-between rounded-lg bg-white p-2 text-xs">
+                <span>{order.finalTotal ? "Final invoice" : "Estimate"}</span>
+                <strong>{formatCurrency(order.finalTotal ?? order.estimateTotal + order.serviceFee)}</strong>
+              </div>
+            </article>
+          );
+        })}
+        {orders.length === 0 ? <p className="rounded-xl bg-limewash p-2.5 text-sm text-ink/58">No active orders right now.</p> : null}
+      </div>
+    </section>
   );
 }
 
