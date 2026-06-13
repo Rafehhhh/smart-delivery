@@ -749,12 +749,12 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
               <div className="mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
                 <table className="w-full table-fixed border-separate border-spacing-y-1 text-left text-[10px] lg:text-xs">
                   <colgroup>
-                    <col className="w-[7%] lg:w-[6%]" />
-                    <col className="w-[30%]" />
-                    <col className="w-[16%] lg:w-[17%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[23%]" />
-                    <col className="w-[10%]" />
+                    <col className="w-[6%] lg:w-[6%]" />
+                    <col className="w-[29%] lg:w-[30%]" />
+                    <col className="w-[15%] lg:w-[17%]" />
+                    <col className="w-[13%] lg:w-[14%]" />
+                    <col className="w-[22%] lg:w-[23%]" />
+                    <col className="w-[15%] lg:w-[10%]" />
                   </colgroup>
                   <thead className="sticky top-0 z-10 bg-white">
                     <tr className="text-ink/58">
@@ -1252,14 +1252,14 @@ function QuantityControl({ value, unit, compact = false, onIncrement, onChange }
             }
           }}
           inputMode="decimal"
-          className={compact ? "w-10 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-12 lg:text-[11px]" : "w-10 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-16 lg:px-2 lg:text-xs"}
+          className={compact ? "w-9 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-12 lg:text-[11px]" : "w-9 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-16 lg:px-2 lg:text-xs"}
           aria-label={`Enter quantity in ${unit}`}
         />
       ) : (
         <button
           type="button"
           onClick={() => setIsEditing(true)}
-          className={compact ? "focus-ring min-w-10 rounded-full px-1 text-center text-[10px] font-semibold leading-none lg:min-w-12 lg:text-[11px]" : "focus-ring min-w-10 rounded-full px-1 text-center text-[10px] font-semibold leading-none lg:min-w-16 lg:px-2 lg:text-xs"}
+          className={compact ? "focus-ring min-w-9 rounded-full px-0.5 text-center text-[10px] font-semibold leading-none lg:min-w-12 lg:px-1 lg:text-[11px]" : "focus-ring min-w-9 rounded-full px-0.5 text-center text-[10px] font-semibold leading-none lg:min-w-16 lg:px-2 lg:text-xs"}
           title="Click to type quantity"
         >
           {formatQuantity(value, unit)}
