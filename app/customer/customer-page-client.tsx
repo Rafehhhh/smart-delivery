@@ -620,7 +620,11 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
             title="Cart"
             onClick={(event) => {
               event.preventDefault();
-              setMobileTab(isCartVisible ? "cart" : "products");
+              if (isCartVisible) {
+                setIsMobileCartDrawerOpen(true);
+              } else {
+                setMobileTab("products");
+              }
             }}
             className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-white text-ink shadow-sm hover:border-leaf/40 hover:text-leaf lg:hidden"
           >
@@ -743,14 +747,14 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
 
             {productRows.length > 0 ? (
               <div className="mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-                <table className={isCartVisible ? "w-full table-fixed border-separate border-spacing-y-1 text-left text-[10px] lg:text-[11px]" : "w-full table-fixed border-separate border-spacing-y-1 text-left text-[10px] lg:text-xs"}>
+                <table className="w-full table-fixed border-separate border-spacing-y-1 text-left text-[10px] lg:text-xs">
                   <colgroup>
-                    <col className={isCartVisible ? "w-[6%]" : "w-[7%]"} />
-                    <col className={isCartVisible ? "w-[30%]" : "w-[29%]"} />
-                    <col className={isCartVisible ? "w-[17%]" : "w-[16%]"} />
-                    <col className={isCartVisible ? "w-[14%]" : "w-[14%]"} />
-                    <col className={isCartVisible ? "w-[23%]" : "w-[24%]"} />
-                    <col className={isCartVisible ? "w-[10%]" : "w-[10%]"} />
+                    <col className="w-[7%] lg:w-[6%]" />
+                    <col className="w-[30%]" />
+                    <col className="w-[16%] lg:w-[17%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[23%]" />
+                    <col className="w-[10%]" />
                   </colgroup>
                   <thead className="sticky top-0 z-10 bg-white">
                     <tr className="text-ink/58">
@@ -764,19 +768,19 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                   </thead>
                   <tbody>
                     {productRows.map((product, index) => (
-                        <tr key={product.id} className="bg-limewash hover:bg-mint/60">
-                          <td className={isCartVisible ? "rounded-l-xl px-1 py-1 font-semibold text-ink/50" : "rounded-l-xl px-1 py-1 font-semibold text-ink/50 lg:px-2 lg:py-1.5"}>{index + 1}</td>
-                          <td className={isCartVisible ? "min-w-0 px-1 py-1" : "min-w-0 px-1 py-1 lg:px-2 lg:py-1.5"}>
-                            <p className={isCartVisible ? "truncate font-semibold leading-tight" : "truncate font-semibold"}>{product.name}</p>
-                            <p className={isCartVisible ? "mt-0.5 truncate text-[9px] leading-tight text-ink/52 lg:text-[10px]" : "mt-0.5 truncate text-[9px] text-ink/52 lg:text-[11px]"}>{product.retailRange ?? "Admin-maintained local price"}</p>
+                        <tr key={product.id} className="bg-limewash shadow-[0_0_0_1px_rgba(23,32,27,0.18)] hover:bg-mint/60">
+                          <td className="rounded-l-xl px-1 py-1 font-semibold text-ink/50 lg:px-2 lg:py-1.5">{index + 1}</td>
+                          <td className="min-w-0 px-1 py-1 lg:px-2 lg:py-1.5">
+                            <p className="truncate font-semibold leading-tight">{product.name}</p>
+                            <p className="mt-0.5 truncate text-[9px] leading-tight text-ink/52 lg:text-[11px]">{product.retailRange ?? "Admin-maintained local price"}</p>
                           </td>
-                          <td className={isCartVisible ? "px-1 py-1 font-semibold leading-tight" : "px-1 py-1 font-semibold lg:px-2 lg:py-1.5"}>
+                          <td className="px-1 py-1 font-semibold leading-tight lg:px-2 lg:py-1.5">
                             {hasKnownPrice(product) ? `${formatCurrency(product.price)} / ${product.unit}` : "Price pending"}
                           </td>
-                          <td className={isCartVisible ? "px-1 py-1 font-semibold leading-tight text-leaf" : "px-1 py-1 font-semibold text-leaf lg:px-2 lg:py-1.5"}>
+                          <td className="px-1 py-1 font-semibold leading-tight text-leaf lg:px-2 lg:py-1.5">
                             {hasKnownPrice(product) ? formatCurrency(product.price * getDraftQuantity(product.id)) : "Pending"}
                           </td>
-                          <td className={isCartVisible ? "px-1 py-1" : "px-1 py-1 lg:px-2 lg:py-1.5"}>
+                          <td className="px-1 py-1 lg:px-2 lg:py-1.5">
                             <QuantityControl
                               value={getDraftQuantity(product.id)}
                               unit={product.unit}
@@ -785,14 +789,14 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                               onChange={(quantity) => setDraftQuantity(product.id, quantity)}
                             />
                           </td>
-                          <td className={isCartVisible ? "rounded-r-xl px-1 py-1" : "rounded-r-xl px-1 py-1 lg:px-2 lg:py-1.5"}>
+                          <td className="rounded-r-xl px-1 py-1 lg:px-2 lg:py-1.5">
                             <button
                               type="button"
                               onClick={() => addProductToCart(product.id)}
-                              className={isCartVisible ? "focus-ring inline-flex h-7 w-7 items-center justify-center rounded-full bg-leaf text-white lg:h-auto lg:w-auto lg:px-2 lg:py-1 lg:text-[10px] lg:font-semibold" : "focus-ring inline-flex h-7 w-7 items-center justify-center rounded-full bg-leaf text-white lg:h-auto lg:w-auto lg:gap-1.5 lg:px-3 lg:py-1.5 lg:text-xs lg:font-semibold"}
+                              className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-full border border-ink/20 bg-leaf text-white shadow-sm lg:h-auto lg:w-auto lg:gap-1.5 lg:border-0 lg:px-3 lg:py-1.5 lg:text-xs lg:font-semibold"
                             >
                               <ShoppingCart aria-hidden size={isCartVisible ? 12 : 14} />
-                              <span className={isCartVisible ? "sr-only" : "sr-only lg:not-sr-only"}>Add</span>
+                              <span className="sr-only lg:not-sr-only">Add</span>
                             </button>
                           </td>
                         </tr>
@@ -1225,11 +1229,11 @@ function QuantityControl({ value, unit, compact = false, onIncrement, onChange }
   }
 
   return (
-    <div className={compact ? "inline-flex items-center gap-0.5 rounded-full border border-ink/10 bg-white p-0.5" : "inline-flex items-center gap-1 rounded-full border border-ink/10 bg-white p-1"}>
+    <div className={compact ? "inline-flex items-center gap-0.5 rounded-full border border-ink/20 bg-white p-0.5 lg:border-ink/10" : "inline-flex items-center gap-0.5 rounded-full border border-ink/20 bg-white p-0.5 lg:gap-1 lg:border-ink/10 lg:p-1"}>
       <button
         type="button"
         onClick={() => onIncrement(-step)}
-        className={compact ? "focus-ring flex h-6 w-6 items-center justify-center rounded-full border border-ink/10" : "focus-ring flex h-7 w-7 items-center justify-center rounded-full border border-ink/10"}
+        className={compact ? "focus-ring flex h-6 w-6 items-center justify-center rounded-full border border-ink/20 lg:border-ink/10" : "focus-ring flex h-6 w-6 items-center justify-center rounded-full border border-ink/20 lg:h-7 lg:w-7 lg:border-ink/10"}
         aria-label={`Reduce quantity by ${step}`}
       >
         <Minus aria-hidden size={compact ? 13 : 15} />
@@ -1248,14 +1252,14 @@ function QuantityControl({ value, unit, compact = false, onIncrement, onChange }
             }
           }}
           inputMode="decimal"
-          className={compact ? "w-12 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[11px] font-semibold outline-none" : "w-16 rounded-full border border-leaf/30 px-2 py-0.5 text-center text-xs font-semibold outline-none"}
+          className={compact ? "w-10 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-12 lg:text-[11px]" : "w-10 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-16 lg:px-2 lg:text-xs"}
           aria-label={`Enter quantity in ${unit}`}
         />
       ) : (
         <button
           type="button"
           onClick={() => setIsEditing(true)}
-          className={compact ? "focus-ring min-w-12 rounded-full px-1 text-center text-[11px] font-semibold leading-none" : "focus-ring min-w-16 rounded-full px-2 text-center text-xs font-semibold"}
+          className={compact ? "focus-ring min-w-10 rounded-full px-1 text-center text-[10px] font-semibold leading-none lg:min-w-12 lg:text-[11px]" : "focus-ring min-w-10 rounded-full px-1 text-center text-[10px] font-semibold leading-none lg:min-w-16 lg:px-2 lg:text-xs"}
           title="Click to type quantity"
         >
           {formatQuantity(value, unit)}
@@ -1264,7 +1268,7 @@ function QuantityControl({ value, unit, compact = false, onIncrement, onChange }
       <button
         type="button"
         onClick={() => onIncrement(step)}
-        className={compact ? "focus-ring flex h-6 w-6 items-center justify-center rounded-full bg-leaf text-white" : "focus-ring flex h-7 w-7 items-center justify-center rounded-full bg-leaf text-white"}
+        className={compact ? "focus-ring flex h-6 w-6 items-center justify-center rounded-full bg-leaf text-white" : "focus-ring flex h-6 w-6 items-center justify-center rounded-full bg-leaf text-white lg:h-7 lg:w-7"}
         aria-label={`Increase quantity by ${step}`}
       >
         <Plus aria-hidden size={compact ? 13 : 15} />
@@ -1768,7 +1772,7 @@ function MobileCustomerProfile({
       <button
         type="button"
         onClick={onManageAddress}
-        className="focus-ring mt-3 inline-flex w-full items-center justify-center rounded-full bg-leaf px-4 py-3 text-sm font-semibold text-white"
+        className="focus-ring mt-3 inline-flex w-full items-center justify-center rounded-full border border-ink/25 bg-transparent px-4 py-3 text-sm font-semibold text-ink shadow-sm"
       >
         Manage address
       </button>
@@ -1795,7 +1799,7 @@ function CustomerBottomTabs({
   ];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-ink/10 bg-white/95 px-2 py-1.5 shadow-soft backdrop-blur lg:hidden">
+    <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-4 rounded-[2rem] border border-ink/25 bg-white/95 px-2 py-1.5 shadow-soft backdrop-blur lg:hidden">
       {tabs.map((tab) => (
         <button
           key={tab.id}
