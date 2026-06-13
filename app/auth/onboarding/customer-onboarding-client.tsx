@@ -3,7 +3,12 @@
 import { FormEvent, useState } from "react";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Home, MapPin } from "lucide-react";
+import { Home, LocateFixed, MapPin } from "lucide-react";
+
+type LocationState = {
+  latitude: number;
+  longitude: number;
+};
 
 export function CustomerOnboardingClient() {
   const router = useRouter();
@@ -18,10 +23,37 @@ export function CustomerOnboardingClient() {
     landmark: ""
   });
   const [error, setError] = useState("");
+  const [location, setLocation] = useState<LocationState | null>(null);
+  const [locationStatus, setLocationStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   function updateField(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function useCurrentLocation() {
+    setError("");
+    setLocationStatus("");
+    if (!navigator.geolocation) {
+      setError("Location is not supported on this device.");
+      return;
+    }
+    setLocationStatus("Getting your location...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        setLocation(nextLocation);
+        setLocationStatus("Location added. You can open it in Google Maps.");
+        setForm((current) => ({
+          ...current,
+          landmark: current.landmark || `GPS: ${nextLocation.latitude.toFixed(5)}, ${nextLocation.longitude.toFixed(5)}`
+        }));
+      },
+      () => setError("Could not get location. Please allow location access or type the address.")
+    );
   }
 
   async function submitDetails(event: FormEvent<HTMLFormElement>) {
@@ -46,8 +78,8 @@ export function CustomerOnboardingClient() {
   }
 
   return (
-    <section className="mx-auto flex min-h-[calc(100vh-90px)] max-w-3xl items-center px-4 py-10 sm:px-6">
-      <form onSubmit={submitDetails} className="w-full rounded-xl border border-ink/10 bg-white p-5 shadow-soft">
+    <section className="mx-auto flex min-h-[calc(100vh-90px)] max-w-3xl items-center px-4 py-6 sm:px-6 lg:py-10">
+      <form onSubmit={submitDetails} className="w-full rounded-3xl border border-ink/25 bg-white p-4 shadow-soft lg:rounded-xl lg:border-ink/10 lg:p-5">
         <p className="text-sm font-semibold uppercase tracking-[0.14em] text-leaf">Customer setup</p>
         <h1 className="mt-2 flex items-center gap-2 text-3xl font-semibold">
           <Home aria-hidden size={26} />
@@ -64,6 +96,28 @@ export function CustomerOnboardingClient() {
           <Input label="Locality" value={form.locality} onChange={(value) => updateField("locality", value)} />
           <Input label="Address" value={form.addressLine} onChange={(value) => updateField("addressLine", value)} wide />
           <Input label="Landmark (optional)" value={form.landmark} onChange={(value) => updateField("landmark", value)} wide />
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-ink/25 bg-limewash p-3 lg:rounded-xl lg:border-ink/10">
+          <button
+            type="button"
+            onClick={useCurrentLocation}
+            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-full border border-ink/25 bg-white px-4 py-2.5 text-sm font-semibold text-ink"
+          >
+            <LocateFixed aria-hidden size={17} />
+            Use my location
+          </button>
+          {locationStatus ? <p className="mt-2 text-xs font-semibold text-leaf">{locationStatus}</p> : null}
+          {location ? (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`}
+              target="_blank"
+              rel="noreferrer"
+              className="focus-ring mt-2 inline-flex w-full items-center justify-center rounded-full border border-ink/25 bg-white px-4 py-2 text-xs font-semibold text-ink"
+            >
+              Open in Google Maps
+            </a>
+          ) : null}
         </div>
 
         {error ? <p className="mt-3 rounded-md bg-clay/10 px-3 py-2 text-sm font-semibold text-clay">{error}</p> : null}
@@ -98,7 +152,7 @@ function Input({
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="focus-ring mt-1.5 w-full rounded-md border border-ink/15 px-3 py-2.5"
+        className="focus-ring mt-1.5 w-full rounded-2xl border border-ink/25 px-3 py-2.5 lg:rounded-md lg:border-ink/15"
         required={!label.includes("optional")}
       />
     </label>
