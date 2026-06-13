@@ -780,14 +780,16 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                           <td className="px-1 py-1 font-semibold leading-tight text-leaf lg:px-2 lg:py-1.5">
                             {hasKnownPrice(product) ? formatCurrency(product.price * getDraftQuantity(product.id)) : "Pending"}
                           </td>
-                          <td className="px-1 py-1 lg:px-2 lg:py-1.5">
-                            <QuantityControl
-                              value={getDraftQuantity(product.id)}
-                              unit={product.unit}
-                              compact={isCartVisible}
-                              onIncrement={(delta) => updateDraftQuantity(product.id, delta)}
-                              onChange={(quantity) => setDraftQuantity(product.id, quantity)}
-                            />
+                          <td className="px-0 py-1 pr-2 lg:px-2 lg:py-1.5">
+                            <div className="-translate-x-1 lg:translate-x-0">
+                              <QuantityControl
+                                value={getDraftQuantity(product.id)}
+                                unit={product.unit}
+                                compact={isCartVisible}
+                                onIncrement={(delta) => updateDraftQuantity(product.id, delta)}
+                                onChange={(quantity) => setDraftQuantity(product.id, quantity)}
+                              />
+                            </div>
                           </td>
                           <td className="rounded-r-xl px-1 py-1 lg:px-2 lg:py-1.5">
                             <button
@@ -1229,14 +1231,14 @@ function QuantityControl({ value, unit, compact = false, onIncrement, onChange }
   }
 
   return (
-    <div className={compact ? "inline-flex items-center gap-0.5 rounded-full border border-ink/20 bg-white p-0.5 lg:border-ink/10" : "inline-flex items-center gap-0.5 rounded-full border border-ink/20 bg-white p-0.5 lg:gap-1 lg:border-ink/10 lg:p-1"}>
+    <div className={compact ? "inline-flex items-center gap-0 rounded-full border border-ink/20 bg-white p-0.5 lg:gap-0.5 lg:border-ink/10" : "inline-flex items-center gap-0 rounded-full border border-ink/20 bg-white p-0.5 lg:gap-1 lg:border-ink/10 lg:p-1"}>
       <button
         type="button"
         onClick={() => onIncrement(-step)}
-        className={compact ? "focus-ring flex h-6 w-6 items-center justify-center rounded-full border border-ink/20 lg:border-ink/10" : "focus-ring flex h-6 w-6 items-center justify-center rounded-full border border-ink/20 lg:h-7 lg:w-7 lg:border-ink/10"}
+        className={compact ? "focus-ring flex h-5 w-5 items-center justify-center rounded-full border border-ink/20 lg:h-6 lg:w-6 lg:border-ink/10" : "focus-ring flex h-5 w-5 items-center justify-center rounded-full border border-ink/20 lg:h-7 lg:w-7 lg:border-ink/10"}
         aria-label={`Reduce quantity by ${step}`}
       >
-        <Minus aria-hidden size={compact ? 13 : 15} />
+        <Minus aria-hidden size={compact ? 12 : 13} />
       </button>
       {isEditing ? (
         <input
@@ -1252,14 +1254,14 @@ function QuantityControl({ value, unit, compact = false, onIncrement, onChange }
             }
           }}
           inputMode="decimal"
-          className={compact ? "w-9 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-12 lg:text-[11px]" : "w-9 rounded-full border border-leaf/30 px-1 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-16 lg:px-2 lg:text-xs"}
+          className={compact ? "w-8 rounded-full border border-leaf/30 px-0.5 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-12 lg:px-1 lg:text-[11px]" : "w-8 rounded-full border border-leaf/30 px-0.5 py-0.5 text-center text-[10px] font-semibold outline-none lg:w-16 lg:px-2 lg:text-xs"}
           aria-label={`Enter quantity in ${unit}`}
         />
       ) : (
         <button
           type="button"
           onClick={() => setIsEditing(true)}
-          className={compact ? "focus-ring min-w-9 rounded-full px-0.5 text-center text-[10px] font-semibold leading-none lg:min-w-12 lg:px-1 lg:text-[11px]" : "focus-ring min-w-9 rounded-full px-0.5 text-center text-[10px] font-semibold leading-none lg:min-w-16 lg:px-2 lg:text-xs"}
+          className={compact ? "focus-ring min-w-8 rounded-full px-0.5 text-center text-[10px] font-semibold leading-none lg:min-w-12 lg:px-1 lg:text-[11px]" : "focus-ring min-w-8 rounded-full px-0.5 text-center text-[10px] font-semibold leading-none lg:min-w-16 lg:px-2 lg:text-xs"}
           title="Click to type quantity"
         >
           {formatQuantity(value, unit)}
@@ -1268,10 +1270,10 @@ function QuantityControl({ value, unit, compact = false, onIncrement, onChange }
       <button
         type="button"
         onClick={() => onIncrement(step)}
-        className={compact ? "focus-ring flex h-6 w-6 items-center justify-center rounded-full bg-leaf text-white" : "focus-ring flex h-6 w-6 items-center justify-center rounded-full bg-leaf text-white lg:h-7 lg:w-7"}
+        className={compact ? "focus-ring flex h-5 w-5 items-center justify-center rounded-full bg-leaf text-white lg:h-6 lg:w-6" : "focus-ring flex h-5 w-5 items-center justify-center rounded-full bg-leaf text-white lg:h-7 lg:w-7"}
         aria-label={`Increase quantity by ${step}`}
       >
-        <Plus aria-hidden size={compact ? 13 : 15} />
+        <Plus aria-hidden size={compact ? 12 : 13} />
       </button>
     </div>
   );
