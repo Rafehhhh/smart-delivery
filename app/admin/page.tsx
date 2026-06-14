@@ -84,7 +84,26 @@ export default async function AdminPage() {
         </div>
       }
     >
-      <main className="mx-auto grid max-w-7xl gap-2 px-2 py-2 sm:px-3">
+      <main className="mx-auto grid max-w-7xl gap-2 px-2 py-2 pb-24 sm:px-3 lg:pb-2">
+        <nav className="grid grid-cols-3 gap-1.5 lg:hidden" aria-label="Admin mobile sections">
+          {[
+            { href: "#staff", label: "Staff", icon: Bike },
+            { href: "#products", label: "Products", icon: PackageSearch },
+            { href: "#orders", label: "Orders", icon: ReceiptText },
+            { href: "#income", label: "Income", icon: Banknote },
+            { href: "#slots", label: "Slots", icon: TrendingUp },
+            { href: "#reviews", label: "Reviews", icon: Star }
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="focus-ring flex items-center justify-center gap-1.5 rounded-full border border-ink/25 bg-white px-2 py-2 text-xs font-semibold shadow-sm"
+            >
+              <item.icon aria-hidden size={14} className="text-leaf" />
+              {item.label}
+            </a>
+          ))}
+        </nav>
         <div className="grid items-start gap-2 lg:grid-cols-2">
           <div className="grid gap-2">
             <div className="grid gap-1.5 sm:grid-cols-3">
@@ -304,7 +323,7 @@ function DashboardSection({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-20 rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
+    <section id={id} className="scroll-mt-20 rounded-3xl border border-ink/25 bg-white p-3 shadow-soft lg:rounded-xl lg:border-ink/10 lg:p-2.5 lg:shadow-sm">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 text-base font-semibold sm:text-lg">
           <Icon aria-hidden size={17} className="text-leaf" />
@@ -315,7 +334,7 @@ function DashboardSection({
       <div className="mt-2 flex justify-end">
         <Link
           href={actionHref}
-          className="focus-ring inline-flex items-center justify-center rounded-full bg-ink px-2.5 py-1 text-xs font-semibold text-white"
+          className="focus-ring inline-flex items-center justify-center rounded-full border border-ink/25 bg-ink px-2.5 py-1.5 text-xs font-semibold text-white"
         >
           {actionLabel}
         </Link>
@@ -326,7 +345,7 @@ function DashboardSection({
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-limewash p-2.5">
+    <div className="rounded-2xl border border-ink/15 bg-limewash p-2.5 lg:rounded-lg lg:border-0">
       <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink/46">{label}</p>
       <p className="mt-0.5 text-sm font-semibold leading-5 sm:text-base">{value}</p>
     </div>
@@ -335,7 +354,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-ink/10 bg-white px-2.5 py-2 shadow-sm">
+    <div className="rounded-2xl border border-ink/25 bg-white px-2.5 py-2 shadow-sm lg:rounded-lg lg:border-ink/10">
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink/46">{label}</p>
       <p className="mt-0.5 truncate text-sm font-semibold text-ink sm:text-base">{value}</p>
     </div>
@@ -344,7 +363,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 
 function ProductMonitorTable({ title, rows }: { title: string; rows: { name: string; detail: string }[] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-ink/10">
+    <div className="overflow-hidden rounded-2xl border border-ink/20 lg:rounded-lg lg:border-ink/10">
       <p className="bg-limewash px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-ink/46">{title}</p>
       <div className="divide-y divide-ink/10">
         {rows.map((row, index) => (

@@ -26,7 +26,7 @@ export function StaffRequestsPanel({ requests }: { requests: StaffSignupRequest[
   }
 
   return (
-    <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
+    <section className="rounded-3xl border border-ink/25 bg-white p-3 shadow-soft lg:rounded-xl lg:border-ink/10 lg:p-2.5 lg:shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <Clock3 aria-hidden size={18} />
@@ -37,11 +37,11 @@ export function StaffRequestsPanel({ requests }: { requests: StaffSignupRequest[
 
       <div className="mt-2 grid gap-2">
         {pendingRows.length ? pendingRows.map((request) => (
-          <article key={request.id} className="rounded-lg bg-limewash p-2 text-xs">
+          <article key={request.id} className="rounded-2xl border border-ink/15 bg-limewash p-2.5 text-xs shadow-sm lg:rounded-lg lg:border-0 lg:p-2 lg:shadow-none">
             <p className="font-semibold">{request.full_name}</p>
             <p className="mt-0.5 text-ink/58">{request.phone}</p>
             <p className="mt-1 text-ink/64">{request.route_area} - {request.vehicle}</p>
-            {request.note ? <p className="mt-1 rounded-md bg-white px-2 py-1 text-ink/62">{request.note}</p> : null}
+            {request.note ? <p className="mt-1 rounded-2xl border border-ink/15 bg-white px-2 py-1 text-ink/62 lg:rounded-md lg:border-0">{request.note}</p> : null}
             <div className="mt-2 grid grid-cols-2 gap-1.5">
               <button
                 type="button"
@@ -64,7 +64,7 @@ export function StaffRequestsPanel({ requests }: { requests: StaffSignupRequest[
             </div>
           </article>
         )) : (
-          <p className="rounded-lg bg-limewash px-2.5 py-2 text-xs font-semibold text-ink/58">No pending staff requests.</p>
+          <p className="rounded-2xl border border-ink/15 bg-limewash px-2.5 py-2 text-xs font-semibold text-ink/58 lg:rounded-lg lg:border-0">No pending staff requests.</p>
         )}
       </div>
     </section>
