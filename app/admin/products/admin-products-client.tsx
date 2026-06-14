@@ -132,7 +132,7 @@ export function AdminProductsClient({ categories, initialProducts }: { categorie
   }
 
   return (
-    <section className="rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
+    <section className="rounded-3xl border border-ink/25 bg-white p-3 shadow-soft lg:rounded-xl lg:border-ink/10 lg:p-2.5 lg:shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/10 pb-2">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold">All products</h2>
@@ -142,7 +142,75 @@ export function AdminProductsClient({ categories, initialProducts }: { categorie
       </div>
       {error ? <p className="mt-2 rounded-lg bg-clay/10 px-3 py-2 text-xs font-semibold text-clay">{error}</p> : null}
 
-      <div className="mt-2 max-h-[calc(100vh-13rem)] overflow-y-auto overflow-x-hidden pr-1">
+      <div className="mt-2 grid max-h-[calc(100dvh-14rem)] gap-2 overflow-y-auto pr-1 lg:hidden">
+        {sortedProducts.map((product, index) => {
+          const previous = product.previousWeekPrice ?? product.price;
+          const difference = product.price - previous;
+          const categoryName = categoryById.get(product.categoryId) ?? "Unmapped";
+          const sourceLabel = product.marketQuotes?.[0]?.shopName ?? product.bestValueShop ?? "Admin-maintained";
+          const isEditing = editingId === product.id && draft;
+
+          return (
+            <article key={product.id} className={product.isAvailable ? "rounded-2xl border border-ink/25 bg-limewash p-3 shadow-sm" : "rounded-2xl border border-ink/15 bg-ink/5 p-3 text-ink/55 shadow-sm"}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink/46">#{index + 1} - {categoryName}</p>
+                  <h3 className="mt-1 truncate text-base font-semibold">{product.name}</h3>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink/58">{product.retailRange ?? "Admin-maintained local price"}</p>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <button type="button" onClick={() => startEdit(product)} className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-ink/25 bg-white text-leaf" aria-label={`Edit ${product.name}`}>
+                    <Pencil aria-hidden size={14} />
+                  </button>
+                  <button type="button" disabled={busyId === product.id} onClick={() => toggleAvailability(product)} className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-ink/25 bg-white text-clay disabled:opacity-50" aria-label={`${product.isAvailable ? "Hide" : "Show"} ${product.name}`}>
+                    <Power aria-hidden size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
+                <MobileProductStat label="Current" value={`${formatCurrency(product.price)} / ${product.unit}`} />
+                <MobileProductStat label="Previous" value={formatCurrency(previous)} />
+                <MobileProductStat label="Change" value={`${difference > 0 ? "+" : ""}${formatCurrency(difference)}`} strongClass={difference > 0 ? "text-clay" : "text-leaf"} />
+                <MobileProductStat label="Status" value={product.isAvailable ? "Live" : "Hidden"} strongClass={product.isAvailable ? "text-leaf" : "text-clay"} />
+              </div>
+
+              <div className="mt-2 rounded-2xl border border-ink/15 bg-white px-2.5 py-2 text-xs">
+                <p className="font-semibold">{sourceLabel}</p>
+                <p className="mt-1 line-clamp-2 leading-5 text-ink/58">{product.sourceNote ?? "Editable admin catalog item"}</p>
+              </div>
+
+              {isEditing ? (
+                <div className="mt-2 rounded-2xl border border-leaf/25 bg-mint/35 p-2">
+                  <div className="grid gap-2">
+                    <EditField label="Price" value={draft.price} onChange={(value) => updateDraft("price", value)} />
+                    <EditField label="Prev week" value={draft.previousWeekPrice} onChange={(value) => updateDraft("previousWeekPrice", value)} />
+                    <EditField label="Retail range" value={draft.retailRange} onChange={(value) => updateDraft("retailRange", value)} />
+                    <EditField label="Best shop" value={draft.bestValueShop} onChange={(value) => updateDraft("bestValueShop", value)} />
+                    <EditField label="Source note" value={draft.sourceNote} onChange={(value) => updateDraft("sourceNote", value)} />
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="flex h-9 items-center gap-1.5 rounded-full border border-ink/25 bg-white px-3 text-xs font-semibold">
+                        <input type="checkbox" checked={draft.isAvailable} onChange={(event) => updateDraft("isAvailable", event.target.checked)} />
+                        Live
+                      </label>
+                      <div className="flex gap-1.5">
+                        <button type="button" disabled={busyId === product.id} onClick={() => saveProduct(product)} className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full bg-leaf text-white disabled:opacity-50" aria-label={`Save ${product.name}`}>
+                          {busyId === product.id ? <Check aria-hidden size={15} /> : <Save aria-hidden size={15} />}
+                        </button>
+                        <button type="button" onClick={() => { setEditingId(null); setDraft(null); }} className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/25 bg-white" aria-label="Cancel edit">
+                          <X aria-hidden size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="mt-2 hidden max-h-[calc(100vh-13rem)] overflow-y-auto overflow-x-hidden pr-1 lg:block">
         <table className="w-full table-fixed border-separate border-spacing-y-1 text-left text-xs">
           <colgroup>
             <col className="w-[5%]" />
@@ -279,6 +347,15 @@ export function AdminProductsClient({ categories, initialProducts }: { categorie
         </table>
       </div>
     </section>
+  );
+}
+
+function MobileProductStat({ label, value, strongClass = "" }: { label: string; value: string; strongClass?: string }) {
+  return (
+    <div className="rounded-2xl border border-ink/15 bg-white px-2 py-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink/46">{label}</p>
+      <p className={`mt-0.5 text-xs font-semibold ${strongClass}`}>{value}</p>
+    </div>
   );
 }
 

@@ -58,7 +58,7 @@ export function SlotCapacityManager() {
   }
 
   return (
-    <section id="slots" className="scroll-mt-20 rounded-xl border border-ink/10 bg-white p-2.5 shadow-sm">
+    <section id="slots" className="scroll-mt-20 rounded-3xl border border-ink/25 bg-white p-3 shadow-soft lg:rounded-xl lg:border-ink/10 lg:p-2.5 lg:shadow-sm">
       <h2 className="flex items-center gap-1.5 text-base font-semibold sm:text-lg">Slot management</h2>
       <p className="mt-0.5 text-sm text-ink/58">Add or delete delivery slot timing and capacity.</p>
 
@@ -66,7 +66,7 @@ export function SlotCapacityManager() {
         <input
           value={label}
           onChange={(event) => setLabel(event.target.value)}
-          className="focus-ring rounded-lg border border-ink/15 px-2.5 py-1.5 text-sm"
+          className="focus-ring rounded-2xl border border-ink/25 px-2.5 py-1.5 text-sm lg:rounded-lg lg:border-ink/15"
           aria-label="Slot label"
         />
         <input
@@ -74,7 +74,7 @@ export function SlotCapacityManager() {
           min={1}
           value={capacity}
           onChange={(event) => setCapacity(Number(event.target.value))}
-          className="focus-ring rounded-lg border border-ink/15 px-2.5 py-1.5 text-sm"
+          className="focus-ring rounded-2xl border border-ink/25 px-2.5 py-1.5 text-sm lg:rounded-lg lg:border-ink/15"
           aria-label="Slot capacity"
         />
       </div>
@@ -90,13 +90,13 @@ export function SlotCapacityManager() {
 
       <div className="mt-2 space-y-1.5">
         {managedSlots.map((slot) => (
-          <div key={slot.id} className="rounded-lg border border-ink/10 p-2.5">
+          <div key={slot.id} className="rounded-2xl border border-ink/25 p-2.5 shadow-sm lg:rounded-lg lg:border-ink/10 lg:shadow-none">
             {editingSlotId === slot.id ? (
               <div className="grid gap-1.5 sm:grid-cols-[1fr_88px_auto]">
                 <input
                   value={editLabel}
                   onChange={(event) => setEditLabel(event.target.value)}
-                  className="focus-ring rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+                  className="focus-ring rounded-2xl border border-ink/25 px-2 py-1.5 text-sm lg:rounded-lg lg:border-ink/15"
                   aria-label={`Edit ${slot.label} label`}
                 />
                 <input
@@ -104,7 +104,7 @@ export function SlotCapacityManager() {
                   min={slot.reserved}
                   value={editCapacity}
                   onChange={(event) => setEditCapacity(Number(event.target.value))}
-                  className="focus-ring rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+                  className="focus-ring rounded-2xl border border-ink/25 px-2 py-1.5 text-sm lg:rounded-lg lg:border-ink/15"
                   aria-label={`Edit ${slot.label} capacity`}
                 />
                 <div className="flex gap-1">
