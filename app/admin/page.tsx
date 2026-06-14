@@ -11,11 +11,13 @@ import {
 } from "@/lib/admin-metrics";
 import { getCatalogData } from "@/lib/supabase-catalog";
 import { getOrdersData } from "@/lib/supabase-orders";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { StaffSignupRequest } from "@/lib/auth-flow";
+import { AdminMobileHeader, AdminMobilePage } from "./admin-mobile-page-client";
 import { SlotCapacityManager } from "./slot-capacity-manager";
 import {
   Banknote,
   Bike,
-  Home,
   MessageCircle,
   PackageSearch,
   ReceiptText,
@@ -25,10 +27,30 @@ import {
 
 export const dynamic = "force-dynamic";
 
+async function getStaffRequests() {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const result = await supabase
+      .from("staff_signup_requests")
+      .select("id, user_id, full_name, phone, route_area, vehicle, note, status, reviewed_by, reviewed_at, created_at, updated_at")
+      .order("created_at", { ascending: false });
+
+    return (result.data ?? []) as StaffSignupRequest[];
+  } catch {
+    return [];
+  }
+}
+
 export default async function AdminPage() {
-  const [{ products }, ordersData] = await Promise.all([getCatalogData(), getOrdersData()]);
+  const [{ categories, products }, ordersData, staffRequests] = await Promise.all([getCatalogData(), getOrdersData(), getStaffRequests()]);
   const visibleOrders = ordersData.orders;
   const staff = profiles.filter((profile) => profile.role === "staff");
+  const admin = profiles.find((profile) => profile.role === "admin") ?? {
+    id: "admin-1",
+    role: "admin" as const,
+    name: "Admin",
+    phone: "+910000000000"
+  };
   const latestOrders = [...visibleOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
   const latestReviews = [...customerReviews].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
   const popularityRank = {
@@ -71,20 +93,17 @@ export default async function AdminPage() {
   return (
     <AppShell
       hideNav
-      headerContent={
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-ink/72">Admin</span>
-          <Link
-            href="/"
-            className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink/10 bg-white text-ink/72 hover:text-ink"
-            aria-label="Go to home"
-          >
-            <Home aria-hidden size={17} />
-          </Link>
-        </div>
-      }
+      headerContent={<AdminMobileHeader admin={admin} />}
     >
-      <main className="mx-auto grid max-w-7xl gap-2 px-2 py-2 pb-24 sm:px-3 lg:pb-2">
+      <AdminMobilePage
+        categories={categories}
+        initialProducts={products}
+        orders={visibleOrders}
+        staff={staff}
+        reviews={customerReviews}
+        staffRequests={staffRequests}
+      />
+      <main className="mx-auto hidden max-w-7xl gap-2 px-2 py-2 pb-24 sm:px-3 lg:grid lg:pb-2">
         <nav className="grid grid-cols-3 gap-1.5 lg:hidden" aria-label="Admin mobile sections">
           {[
             { href: "#staff", label: "Staff", icon: Bike },

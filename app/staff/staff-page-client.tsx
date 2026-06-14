@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { MobileHomeConfirmLink } from "@/components/mobile-home-confirm-link";
 import { StatusPill } from "@/components/status-pill";
 import { areAllOrderItemsFinalized, calculateFinalItemsTotal } from "@/lib/calculations";
 import { profiles } from "@/lib/demo-data";
@@ -302,13 +303,11 @@ export function StaffPageClient({ initialOrders }: { initialOrders: Order[] }) {
           >
             <ClipboardList aria-hidden size={17} />
           </button>
-          <Link
-            href="/"
+          <MobileHomeConfirmLink
             className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink/25 bg-white text-ink/72 shadow-sm hover:text-ink lg:border-ink/10 lg:shadow-none"
-            aria-label="Go to home"
           >
             <Home aria-hidden size={16} />
-          </Link>
+          </MobileHomeConfirmLink>
           {isProfileOpen ? (
             <ProfileSummaryPopover
               profile={profile}

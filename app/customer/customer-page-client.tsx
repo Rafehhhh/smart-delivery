@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { MobileHomeConfirmLink } from "@/components/mobile-home-confirm-link";
 import { calculateEstimate, calculateServiceFee, isSlotSelectable, remainingSlotCapacity } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
 import { formatOrderEventTitle, formatOrderStatus, getOrderProgressIndex, orderProgressSteps } from "@/lib/order-progress";
@@ -649,14 +650,12 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
               }}
             />
           </div>
-          <a
-            href="/"
-            aria-label="Home"
+          <MobileHomeConfirmLink
             title="Home"
             className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-white text-ink shadow-sm hover:border-leaf/40 hover:text-leaf lg:border-ink/15 lg:shadow-none"
           >
             <Home aria-hidden size={16} />
-          </a>
+          </MobileHomeConfirmLink>
         </>
       }
     >
@@ -758,12 +757,12 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                   </colgroup>
                   <thead className="sticky top-0 z-10 bg-white">
                     <tr className="text-ink/58">
-                      <th className={isCartVisible ? "px-1 py-1 font-semibold" : "px-2 py-1 font-semibold"}>{isCartVisible ? "No" : "No."}</th>
-                      <th className={isCartVisible ? "px-1 py-1 font-semibold" : "px-2 py-1 font-semibold"}>{isCartVisible ? "Item" : "Product"}</th>
-                      <th className={isCartVisible ? "px-1 py-1 font-semibold" : "px-2 py-1 font-semibold"}>{isCartVisible ? "Rate" : "Price"}</th>
-                      <th className={isCartVisible ? "px-1 py-1 font-semibold" : "px-2 py-1 font-semibold"}>Total</th>
-                      <th className={isCartVisible ? "px-1 py-1 font-semibold" : "px-2 py-1 font-semibold"}>{isCartVisible ? "Qty" : "Quantity"}</th>
-                      <th className={isCartVisible ? "px-1 py-1 font-semibold" : "px-2 py-1 font-semibold"}>{isCartVisible ? "Add" : "Cart"}</th>
+                      <th className="px-1 py-1 font-semibold lg:px-2">No.</th>
+                      <th className="px-1 py-1 font-semibold lg:px-2">Product</th>
+                      <th className="px-1 py-1 font-semibold lg:px-2">Price</th>
+                      <th className="px-1 py-1 font-semibold lg:px-2">Total</th>
+                      <th className="px-1 py-1 font-semibold lg:px-2">Quantity</th>
+                      <th className="px-1 py-1 font-semibold lg:px-2">Cart</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -785,7 +784,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                               <QuantityControl
                                 value={getDraftQuantity(product.id)}
                                 unit={product.unit}
-                                compact={isCartVisible}
+                                compact={false}
                                 onIncrement={(delta) => updateDraftQuantity(product.id, delta)}
                                 onChange={(quantity) => setDraftQuantity(product.id, quantity)}
                               />
@@ -797,7 +796,7 @@ export function CustomerPageClient({ initialCatalog, initialOrders }: CustomerPa
                               onClick={() => addProductToCart(product.id)}
                               className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-full border border-ink/20 bg-leaf text-white shadow-sm lg:h-auto lg:w-auto lg:gap-1.5 lg:border-0 lg:px-3 lg:py-1.5 lg:text-xs lg:font-semibold"
                             >
-                              <ShoppingCart aria-hidden size={isCartVisible ? 12 : 14} />
+                              <ShoppingCart aria-hidden size={14} />
                               <span className="sr-only lg:not-sr-only">Add</span>
                             </button>
                           </td>
